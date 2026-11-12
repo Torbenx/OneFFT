@@ -1,0 +1,394 @@
+<?xml version="1.0" encoding="utf-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+  "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg xmlns:xlink="http://www.w3.org/1999/xlink" width="547.2pt" height="280.8pt" viewBox="0 0 547.2 280.8" xmlns="http://www.w3.org/2000/svg" version="1.1">
+ <metadata>
+  <rdf:RDF xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:cc="http://creativecommons.org/ns#" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+   <cc:Work>
+    <dc:type rdf:resource="http://purl.org/dc/dcmitype/StillImage"/>
+    <dc:format>image/svg+xml</dc:format>
+   </cc:Work>
+  </rdf:RDF>
+ </metadata>
+ <defs>
+  <style type="text/css">*{stroke-linejoin: round; stroke-linecap: butt}</style>
+ </defs>
+ <g id="figure_1">
+  <g id="patch_1">
+   <path d="M 0 280.8 
+L 547.2 280.8 
+L 547.2 0 
+L 0 0 
+z
+" style="fill: #fcfcfb"/>
+  </g>
+  <g id="axes_1">
+   <g id="patch_2">
+    <path d="M 41.04 248.508 
+L 478.8 248.508 
+L 478.8 63.18 
+L 41.04 63.18 
+z
+" style="fill: #fcfcfb"/>
+   </g>
+   <g id="matplotlib.axis_1">
+    <g id="xtick_1">
+     <g id="line2d_1"/>
+     <g id="text_1">
+      <text style="font-size: 9px; font-family: system-ui, -apple-system, 'Segoe UI', system-ui, -apple-system, 'Segoe UI', 'system-ui, -apple-system, 'Segoe UI', 'DejaVu Sans', sans-serif', sans-serif, sans-serif; text-anchor: middle; fill: #898781" x="48.598911" y="260.346594" transform="rotate(-0 48.598911 260.346594)">4</text>
+     </g>
+    </g>
+    <g id="xtick_2">
+     <g id="line2d_2"/>
+     <g id="text_2">
+      <text style="font-size: 9px; font-family: system-ui, -apple-system, 'Segoe UI', system-ui, -apple-system, 'Segoe UI', 'system-ui, -apple-system, 'Segoe UI', 'DejaVu Sans', sans-serif', sans-serif, sans-serif; text-anchor: middle; fill: #898781" x="95.559153" y="260.346594" transform="rotate(-0 95.559153 260.346594)">16</text>
+     </g>
+    </g>
+    <g id="xtick_3">
+     <g id="line2d_3"/>
+     <g id="text_3">
+      <text style="font-size: 9px; font-family: system-ui, -apple-system, 'Segoe UI', system-ui, -apple-system, 'Segoe UI', 'system-ui, -apple-system, 'Segoe UI', 'DejaVu Sans', sans-serif', sans-serif, sans-serif; text-anchor: middle; fill: #898781" x="142.519395" y="260.346594" transform="rotate(-0 142.519395 260.346594)">64</text>
+     </g>
+    </g>
+    <g id="xtick_4">
+     <g id="line2d_4"/>
+     <g id="text_4">
+      <text style="font-size: 9px; font-family: system-ui, -apple-system, 'Segoe UI', system-ui, -apple-system, 'Segoe UI', 'system-ui, -apple-system, 'Segoe UI', 'DejaVu Sans', sans-serif', sans-serif, sans-serif; text-anchor: middle; fill: #898781" x="189.479637" y="260.346594" transform="rotate(-0 189.479637 260.346594)">256</text>
+     </g>
+    </g>
+    <g id="xtick_5">
+     <g id="line2d_5"/>
+     <g id="text_5">
+      <text style="font-size: 9px; font-family: system-ui, -apple-system, 'Segoe UI', system-ui, -apple-system, 'Segoe UI', 'system-ui, -apple-system, 'Segoe UI', 'DejaVu Sans', sans-serif', sans-serif, sans-serif; text-anchor: middle; fill: #898781" x="236.439879" y="260.346594" transform="rotate(-0 236.439879 260.346594)">1K</text>
+     </g>
+    </g>
+    <g id="xtick_6">
+     <g id="line2d_6"/>
+     <g id="text_6">
+      <text style="font-size: 9px; font-family: system-ui, -apple-system, 'Segoe UI', system-ui, -apple-system, 'Segoe UI', 'system-ui, -apple-system, 'Segoe UI', 'DejaVu Sans', sans-serif', sans-serif, sans-serif; text-anchor: middle; fill: #898781" x="283.400121" y="260.346594" transform="rotate(-0 283.400121 260.346594)">4K</text>
+     </g>
+    </g>
+    <g id="xtick_7">
+     <g id="line2d_7"/>
+     <g id="text_7">
+      <text style="font-size: 9px; font-family: system-ui, -apple-system, 'Segoe UI', system-ui, -apple-system, 'Segoe UI', 'system-ui, -apple-system, 'Segoe UI', 'DejaVu Sans', sans-serif', sans-serif, sans-serif; text-anchor: middle; fill: #898781" x="330.360363" y="260.346594" transform="rotate(-0 330.360363 260.346594)">16K</text>
+     </g>
+    </g>
+    <g id="xtick_8">
+     <g id="line2d_8"/>
+     <g id="text_8">
+      <text style="font-size: 9px; font-family: system-ui, -apple-system, 'Segoe UI', system-ui, -apple-system, 'Segoe UI', 'system-ui, -apple-system, 'Segoe UI', 'DejaVu Sans', sans-serif', sans-serif, sans-serif; text-anchor: middle; fill: #898781" x="377.320605" y="260.346594" transform="rotate(-0 377.320605 260.346594)">64K</text>
+     </g>
+    </g>
+    <g id="xtick_9">
+     <g id="line2d_9"/>
+     <g id="text_9">
+      <text style="font-size: 9px; font-family: system-ui, -apple-system, 'Segoe UI', system-ui, -apple-system, 'Segoe UI', 'system-ui, -apple-system, 'Segoe UI', 'DejaVu Sans', sans-serif', sans-serif, sans-serif; text-anchor: middle; fill: #898781" x="424.280847" y="260.346594" transform="rotate(-0 424.280847 260.346594)">256K</text>
+     </g>
+    </g>
+    <g id="xtick_10">
+     <g id="line2d_10"/>
+     <g id="text_10">
+      <text style="font-size: 9px; font-family: system-ui, -apple-system, 'Segoe UI', system-ui, -apple-system, 'Segoe UI', 'system-ui, -apple-system, 'Segoe UI', 'DejaVu Sans', sans-serif', sans-serif, sans-serif; text-anchor: middle; fill: #898781" x="471.241089" y="260.346594" transform="rotate(-0 471.241089 260.346594)">1M</text>
+     </g>
+    </g>
+   </g>
+   <g id="matplotlib.axis_2">
+    <g id="ytick_1">
+     <g id="line2d_11">
+      <path d="M 41.04 248.508 
+L 478.8 248.508 
+" clip-path="url(#p783c82a42f)" style="fill: none; stroke: #e1e0d9; stroke-linecap: square"/>
+     </g>
+     <g id="line2d_12"/>
+     <g id="text_11">
+      <text style="font-size: 9px; font-family: system-ui, -apple-system, 'Segoe UI', system-ui, -apple-system, 'Segoe UI', 'system-ui, -apple-system, 'Segoe UI', 'DejaVu Sans', sans-serif', sans-serif, sans-serif; text-anchor: end; fill: #898781" x="36.04" y="251.927297" transform="rotate(-0 36.04 251.927297)">0</text>
+     </g>
+    </g>
+    <g id="ytick_2">
+     <g id="line2d_13">
+      <path d="M 41.04 202.176 
+L 478.8 202.176 
+" clip-path="url(#p783c82a42f)" style="fill: none; stroke: #e1e0d9; stroke-linecap: square"/>
+     </g>
+     <g id="line2d_14"/>
+     <g id="text_12">
+      <text style="font-size: 9px; font-family: system-ui, -apple-system, 'Segoe UI', system-ui, -apple-system, 'Segoe UI', 'system-ui, -apple-system, 'Segoe UI', 'DejaVu Sans', sans-serif', sans-serif, sans-serif; text-anchor: end; fill: #898781" x="36.04" y="205.595297" transform="rotate(-0 36.04 205.595297)">20K</text>
+     </g>
+    </g>
+    <g id="ytick_3">
+     <g id="line2d_15">
+      <path d="M 41.04 155.844 
+L 478.8 155.844 
+" clip-path="url(#p783c82a42f)" style="fill: none; stroke: #e1e0d9; stroke-linecap: square"/>
+     </g>
+     <g id="line2d_16"/>
+     <g id="text_13">
+      <text style="font-size: 9px; font-family: system-ui, -apple-system, 'Segoe UI', system-ui, -apple-system, 'Segoe UI', 'system-ui, -apple-system, 'Segoe UI', 'DejaVu Sans', sans-serif', sans-serif, sans-serif; text-anchor: end; fill: #898781" x="36.04" y="159.263297" transform="rotate(-0 36.04 159.263297)">40K</text>
+     </g>
+    </g>
+    <g id="ytick_4">
+     <g id="line2d_17">
+      <path d="M 41.04 109.512 
+L 478.8 109.512 
+" clip-path="url(#p783c82a42f)" style="fill: none; stroke: #e1e0d9; stroke-linecap: square"/>
+     </g>
+     <g id="line2d_18"/>
+     <g id="text_14">
+      <text style="font-size: 9px; font-family: system-ui, -apple-system, 'Segoe UI', system-ui, -apple-system, 'Segoe UI', 'system-ui, -apple-system, 'Segoe UI', 'DejaVu Sans', sans-serif', sans-serif, sans-serif; text-anchor: end; fill: #898781" x="36.04" y="112.931297" transform="rotate(-0 36.04 112.931297)">60K</text>
+     </g>
+    </g>
+    <g id="ytick_5">
+     <g id="line2d_19">
+      <path d="M 41.04 63.18 
+L 478.8 63.18 
+" clip-path="url(#p783c82a42f)" style="fill: none; stroke: #e1e0d9; stroke-linecap: square"/>
+     </g>
+     <g id="line2d_20"/>
+     <g id="text_15">
+      <text style="font-size: 9px; font-family: system-ui, -apple-system, 'Segoe UI', system-ui, -apple-system, 'Segoe UI', 'system-ui, -apple-system, 'Segoe UI', 'DejaVu Sans', sans-serif', sans-serif, sans-serif; text-anchor: end; fill: #898781" x="36.04" y="66.599297" transform="rotate(-0 36.04 66.599297)">80K</text>
+     </g>
+    </g>
+   </g>
+   <g id="line2d_21">
+    <path d="M 480.128588 232.155772 
+L 493.915653 240.398121 
+" style="fill: none; stroke: #898781; stroke-width: 0.8; stroke-linecap: square"/>
+   </g>
+   <g id="line2d_22">
+    <path d="M 480.128588 225.506591 
+L 493.915653 218.900073 
+" style="fill: none; stroke: #898781; stroke-width: 0.8; stroke-linecap: square"/>
+   </g>
+   <g id="line2d_23">
+    <path d="M 95.559153 220.949933 
+L 119.039274 205.105658 
+L 142.519395 200.732791 
+L 165.999516 196.407759 
+L 189.479637 189.277079 
+L 212.959758 189.255709 
+L 236.439879 185.168301 
+L 259.92 187.922482 
+L 283.400121 184.86611 
+L 306.880242 186.373845 
+L 330.360363 182.575499 
+L 353.840484 185.196124 
+L 377.320605 185.095435 
+L 400.800726 189.471242 
+L 424.280847 216.268355 
+L 447.760968 231.401009 
+L 471.241089 231.284928 
+" clip-path="url(#p783c82a42f)" style="fill: none; stroke: #eda100; stroke-width: 2; stroke-linecap: round"/>
+   </g>
+   <g id="line2d_24">
+    <path d="M 48.598911 215.413714 
+L 72.079032 204.382286 
+L 95.559153 184.601793 
+L 119.039274 167.578742 
+L 142.519395 176.883652 
+L 165.999516 161.949468 
+L 189.479637 159.927029 
+L 212.959758 156.909469 
+L 236.439879 155.23921 
+L 259.92 155.613082 
+L 283.400121 161.15834 
+L 306.880242 185.200678 
+L 330.360363 199.059422 
+L 353.840484 207.895206 
+L 377.320605 210.472476 
+L 400.800726 211.391815 
+L 424.280847 221.555926 
+L 447.760968 231.02045 
+L 471.241089 232.155772 
+" clip-path="url(#p783c82a42f)" style="fill: none; stroke: #1baf7a; stroke-width: 2; stroke-linecap: round"/>
+   </g>
+   <g id="line2d_25">
+    <path d="M 48.598911 236.473714 
+L 72.079032 226.26864 
+L 95.559153 218.736434 
+L 119.039274 170.310532 
+L 142.519395 128.295243 
+L 165.999516 102.539392 
+L 189.479637 80.742908 
+L 212.959758 69.278772 
+L 236.439879 74.158566 
+L 259.92 85.795632 
+L 283.400121 101.143602 
+L 306.880242 139.897552 
+L 330.360363 145.519664 
+L 353.840484 159.305392 
+L 377.320605 171.468933 
+L 400.800726 175.650056 
+L 424.280847 191.460918 
+L 447.760968 225.172803 
+L 471.241089 225.506591 
+" clip-path="url(#p783c82a42f)" style="fill: none; stroke: #eb6834; stroke-width: 2; stroke-linecap: round"/>
+   </g>
+   <g id="patch_3">
+    <path d="M 41.04 248.508 
+L 478.8 248.508 
+" style="fill: none; stroke: #c3c2b7; stroke-linejoin: miter; stroke-linecap: square"/>
+   </g>
+   <g id="line2d_26">
+    <path d="M 48.598911 222.768 
+L 72.079032 207.016657 
+L 95.559153 155.844 
+L 119.039274 127.378588 
+L 142.519395 136.752422 
+L 165.999516 107.688896 
+L 189.479637 100.430697 
+L 212.959758 89.749927 
+L 236.439879 89.513469 
+L 259.92 84.155903 
+L 283.400121 92.228116 
+L 306.880242 101.159444 
+L 330.360363 109.80395 
+L 353.840484 122.536349 
+L 377.320605 127.314069 
+L 400.800726 125.770817 
+L 424.280847 166.217782 
+L 447.760968 198.652767 
+L 471.241089 203.965726 
+" clip-path="url(#p783c82a42f)" style="fill: none; stroke: #2a78d6; stroke-width: 2; stroke-linecap: round"/>
+   </g>
+   <g id="text_16">
+    <text style="font-size: 9.5px; font-family: system-ui, -apple-system, 'Segoe UI', system-ui, -apple-system, 'Segoe UI', 'system-ui, -apple-system, 'Segoe UI', 'DejaVu Sans', sans-serif', sans-serif, sans-serif; text-anchor: start; fill: #52514e" x="496.37396" y="243.019527" transform="rotate(-0 496.37396 243.019527)">FFmpeg</text>
+   </g>
+   <g id="text_17">
+    <text style="font-size: 9.5px; font-family: system-ui, -apple-system, 'Segoe UI', system-ui, -apple-system, 'Segoe UI', 'system-ui, -apple-system, 'Segoe UI', 'DejaVu Sans', sans-serif', sans-serif, sans-serif; text-anchor: start; fill: #52514e" x="496.37396" y="232.270503" transform="rotate(-0 496.37396 232.270503)">PFFFT</text>
+   </g>
+   <g id="text_18">
+    <text style="font-size: 9.5px; font-family: system-ui, -apple-system, 'Segoe UI', system-ui, -apple-system, 'Segoe UI', 'system-ui, -apple-system, 'Segoe UI', 'DejaVu Sans', sans-serif', sans-serif, sans-serif; text-anchor: start; fill: #52514e" x="496.37396" y="221.521479" transform="rotate(-0 496.37396 221.521479)">FFTW</text>
+   </g>
+   <g id="text_19">
+    <text style="font-size: 9.5px; font-family: system-ui, -apple-system, 'Segoe UI', system-ui, -apple-system, 'Segoe UI', 'system-ui, -apple-system, 'Segoe UI', 'DejaVu Sans', sans-serif', sans-serif, sans-serif; text-anchor: start; fill: #52514e" x="496.37396" y="206.587132" transform="rotate(-0 496.37396 206.587132)">OneFFT</text>
+   </g>
+   <g id="line2d_27">
+    <path d="M 471.241089 231.284928 
+" style="fill: none; stroke: #1f77b4; stroke-width: 1.5; stroke-linecap: square"/>
+    <defs>
+     <path id="m5d4fb2577f" d="M 0 4 
+C 1.060812 4 2.078319 3.578535 2.828427 2.828427 
+C 3.578535 2.078319 4 1.060812 4 0 
+C 4 -1.060812 3.578535 -2.078319 2.828427 -2.828427 
+C 2.078319 -3.578535 1.060812 -4 0 -4 
+C -1.060812 -4 -2.078319 -3.578535 -2.828427 -2.828427 
+C -3.578535 -2.078319 -4 -1.060812 -4 0 
+C -4 1.060812 -3.578535 2.078319 -2.828427 2.828427 
+C -2.078319 3.578535 -1.060812 4 0 4 
+z
+" style="stroke: #fcfcfb; stroke-width: 2"/>
+    </defs>
+    <g>
+     <use xlink:href="#m5d4fb2577f" x="471.241089" y="231.284928" style="fill: #eda100; stroke: #fcfcfb; stroke-width: 2"/>
+    </g>
+   </g>
+   <g id="line2d_28">
+    <path d="M 471.241089 232.155772 
+" style="fill: none; stroke: #ff7f0e; stroke-width: 1.5; stroke-linecap: square"/>
+    <defs>
+     <path id="mb385538bec" d="M 0 4 
+C 1.060812 4 2.078319 3.578535 2.828427 2.828427 
+C 3.578535 2.078319 4 1.060812 4 0 
+C 4 -1.060812 3.578535 -2.078319 2.828427 -2.828427 
+C 2.078319 -3.578535 1.060812 -4 0 -4 
+C -1.060812 -4 -2.078319 -3.578535 -2.828427 -2.828427 
+C -3.578535 -2.078319 -4 -1.060812 -4 0 
+C -4 1.060812 -3.578535 2.078319 -2.828427 2.828427 
+C -2.078319 3.578535 -1.060812 4 0 4 
+z
+" style="stroke: #fcfcfb; stroke-width: 2"/>
+    </defs>
+    <g>
+     <use xlink:href="#mb385538bec" x="471.241089" y="232.155772" style="fill: #1baf7a; stroke: #fcfcfb; stroke-width: 2"/>
+    </g>
+   </g>
+   <g id="line2d_29">
+    <path d="M 471.241089 225.506591 
+" style="fill: none; stroke: #2ca02c; stroke-width: 1.5; stroke-linecap: square"/>
+    <defs>
+     <path id="m1467af2e55" d="M 0 4 
+C 1.060812 4 2.078319 3.578535 2.828427 2.828427 
+C 3.578535 2.078319 4 1.060812 4 0 
+C 4 -1.060812 3.578535 -2.078319 2.828427 -2.828427 
+C 2.078319 -3.578535 1.060812 -4 0 -4 
+C -1.060812 -4 -2.078319 -3.578535 -2.828427 -2.828427 
+C -3.578535 -2.078319 -4 -1.060812 -4 0 
+C -4 1.060812 -3.578535 2.078319 -2.828427 2.828427 
+C -2.078319 3.578535 -1.060812 4 0 4 
+z
+" style="stroke: #fcfcfb; stroke-width: 2"/>
+    </defs>
+    <g>
+     <use xlink:href="#m1467af2e55" x="471.241089" y="225.506591" style="fill: #eb6834; stroke: #fcfcfb; stroke-width: 2"/>
+    </g>
+   </g>
+   <g id="line2d_30">
+    <path d="M 471.241089 203.965726 
+" style="fill: none; stroke: #d62728; stroke-width: 1.5; stroke-linecap: square"/>
+    <defs>
+     <path id="mdb0aa99128" d="M 0 4 
+C 1.060812 4 2.078319 3.578535 2.828427 2.828427 
+C 3.578535 2.078319 4 1.060812 4 0 
+C 4 -1.060812 3.578535 -2.078319 2.828427 -2.828427 
+C 2.078319 -3.578535 1.060812 -4 0 -4 
+C -1.060812 -4 -2.078319 -3.578535 -2.828427 -2.828427 
+C -3.578535 -2.078319 -4 -1.060812 -4 0 
+C -4 1.060812 -3.578535 2.078319 -2.828427 2.828427 
+C -2.078319 3.578535 -1.060812 4 0 4 
+z
+" style="stroke: #fcfcfb; stroke-width: 2"/>
+    </defs>
+    <g>
+     <use xlink:href="#mdb0aa99128" x="471.241089" y="203.965726" style="fill: #2a78d6; stroke: #fcfcfb; stroke-width: 2"/>
+    </g>
+   </g>
+  </g>
+  <g id="line2d_31">
+   <path d="M 12.0384 49.14 
+L 28.4544 49.14 
+" style="fill: none; stroke: #2a78d6; stroke-width: 2; stroke-linecap: round"/>
+  </g>
+  <g id="line2d_32">
+   <path d="M 81.5328 49.14 
+L 97.9488 49.14 
+" style="fill: none; stroke: #eb6834; stroke-width: 2; stroke-linecap: round"/>
+  </g>
+  <g id="line2d_33">
+   <path d="M 137.3472 49.14 
+L 153.7632 49.14 
+" style="fill: none; stroke: #1baf7a; stroke-width: 2; stroke-linecap: round"/>
+  </g>
+  <g id="line2d_34">
+   <path d="M 206.8416 49.14 
+L 223.2576 49.14 
+" style="fill: none; stroke: #eda100; stroke-width: 2; stroke-linecap: round"/>
+  </g>
+  <g id="text_20">
+   <text style="font-weight: 700; font-size: 12px; font-family: system-ui, -apple-system, 'Segoe UI', system-ui, -apple-system, 'Segoe UI', 'system-ui, -apple-system, 'Segoe UI', 'DejaVu Sans', sans-serif', sans-serif, sans-serif; text-anchor: start; fill: #0b0b0b" x="10.944" y="18.701813" transform="rotate(-0 10.944 18.701813)">AMD Ryzen 7 5700U (Zen 2), AVX2</text>
+  </g>
+  <g id="text_21">
+   <text style="font-size: 9px; font-family: system-ui, -apple-system, 'Segoe UI', system-ui, -apple-system, 'Segoe UI', 'system-ui, -apple-system, 'Segoe UI', 'DejaVu Sans', sans-serif', sans-serif, sans-serif; text-anchor: start; fill: #52514e" x="10.944" y="34.775438" transform="rotate(-0 10.944 34.775438)">Speed in mflops = 5 n log₂(n) / (time in µs), by transform size n. Higher is better.</text>
+  </g>
+  <g id="text_22">
+   <text style="font-size: 9px; font-family: system-ui, -apple-system, 'Segoe UI', system-ui, -apple-system, 'Segoe UI', 'system-ui, -apple-system, 'Segoe UI', 'DejaVu Sans', sans-serif', sans-serif, sans-serif; text-anchor: start; fill: #52514e" x="32.832" y="51.623438" transform="rotate(-0 32.832 51.623438)">OneFFT</text>
+  </g>
+  <g id="text_23">
+   <text style="font-size: 9px; font-family: system-ui, -apple-system, 'Segoe UI', system-ui, -apple-system, 'Segoe UI', 'system-ui, -apple-system, 'Segoe UI', 'DejaVu Sans', sans-serif', sans-serif, sans-serif; text-anchor: start; fill: #52514e" x="102.3264" y="51.623438" transform="rotate(-0 102.3264 51.623438)">FFTW</text>
+  </g>
+  <g id="text_24">
+   <text style="font-size: 9px; font-family: system-ui, -apple-system, 'Segoe UI', system-ui, -apple-system, 'Segoe UI', 'system-ui, -apple-system, 'Segoe UI', 'DejaVu Sans', sans-serif', sans-serif, sans-serif; text-anchor: start; fill: #52514e" x="158.1408" y="51.623438" transform="rotate(-0 158.1408 51.623438)">FFmpeg</text>
+  </g>
+  <g id="text_25">
+   <text style="font-size: 9px; font-family: system-ui, -apple-system, 'Segoe UI', system-ui, -apple-system, 'Segoe UI', 'system-ui, -apple-system, 'Segoe UI', 'DejaVu Sans', sans-serif', sans-serif, sans-serif; text-anchor: start; fill: #52514e" x="227.6352" y="51.623438" transform="rotate(-0 227.6352 51.623438)">PFFFT</text>
+  </g>
+  <g id="text_26">
+   <text style="font-style: italic; font-size: 9px; font-family: system-ui, -apple-system, 'Segoe UI', system-ui, -apple-system, 'Segoe UI', 'system-ui, -apple-system, 'Segoe UI', 'DejaVu Sans', sans-serif', sans-serif, sans-serif; text-anchor: end; fill: #898781" x="478.8" y="270.647438" transform="rotate(-0 478.8 270.647438)">n</text>
+  </g>
+ </g>
+ <defs>
+  <clipPath id="p783c82a42f">
+   <rect x="41.04" y="63.18" width="437.76" height="185.328"/>
+  </clipPath>
+ </defs>
+</svg>

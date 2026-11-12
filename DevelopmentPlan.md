@@ -43,3 +43,33 @@ R3. Implement user iterface with documentation
 R4. Setup github CI for correctness tests
 R5. Write further documentation (REAME, etc)
 R6. Final review and polish
+
+## Status (written by the implementation sessions)
+
+Done and verified. Tests pass on Pixel 3a, Galaxy A50, Galaxy S24, Apple M2, the Zen 2 laptop,
+the Intel i5-9600K and the EPYC 7443P.
+
+* A1/A2  Reference built, validated and benchmarked against FFTW, FFmpeg, PFFFT, KissFFT, vDSP.
+* A3-A7  AArch64 for all power-of-two sizes, forward and inverse: kernel generator with
+         simulation tests (gen/), instruction scheduling, cache blocking for large sizes, and a
+         second form of the passes from fused multiply-add butterflies, the default on Apple.
+* X1-X5  AVX2 (+FMA), measured and tuned on Zen 2, Zen 3 and Skylake: radix 8 first pass and
+         radix 8 pass before the last, both computing in place in 16 registers.
+* X6/X7  SSE2: complete and tested, not tuned (every x86-64 machine at hand has AVX2).
+* R1-R3  C and C++ interface (include/onefft.h), single file distribution (dist/), CMake, Bazel.
+* R4     .github/workflows/ci.yml is written but has never run.
+* R5     README.md, docs/design.md, docs/measurements.md.
+
+Open:
+
+* X8/X9  AVX-512 is not implemented: none of the machines has it. Such processors run the AVX2
+         kernels. docs/design.md sketches the layout; Intel SDE would do for correctness tests
+         but tuning needs hardware (ideally one Intel and one AMD Zen 4 or later).
+* Between 64 and 4096 points FFTW with patient planning is still up to 13% faster on some
+  machines (see docs/measurements.md); Apple's vDSP is 1.2 to 2.3 times faster on the M2.
+  Ideas that were not tried: vendor specific AVX2 kernels (the in-place kernels are limited by
+  the multiply-add units on AMD and by instruction count on Intel), and the fused form of the
+  passes on x86.
+* No LICENSE file: the choice is the owner's.
+* Windows (MinGW/Clang) is untested. MSVC is not supported by design.
+* CI has to be run once on GitHub; the workflow may need small fixes.
