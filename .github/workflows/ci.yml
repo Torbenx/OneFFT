@@ -30,7 +30,7 @@ jobs:
           - {os: ubuntu-24.04-arm, cc: gcc, cxx: g++}       # AArch64
           - {os: ubuntu-24.04-arm, cc: clang, cxx: clang++}
           - {os: macos-latest, cc: clang, cxx: clang++}     # Apple silicon
-          - {os: macos-13, cc: clang, cxx: clang++}         # x86-64 macOS
+          - {os: macos-15-intel, cc: clang, cxx: clang++}   # x86-64 macOS
     runs-on: ${{ matrix.os }}
     env:
       CC: ${{ matrix.cc }}
