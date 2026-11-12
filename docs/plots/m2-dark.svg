@@ -35,61 +35,61 @@ z
     <g id="xtick_1">
      <g id="line2d_1"/>
      <g id="text_1">
-      <text style="font-size: 9px; font-family: system-ui, -apple-system, 'Segoe UI', system-ui, -apple-system, 'Segoe UI', 'system-ui, -apple-system, 'Segoe UI', 'DejaVu Sans', sans-serif', sans-serif, sans-serif; text-anchor: middle; fill: #898781" x="48.598911" y="260.346594" transform="rotate(-0 48.598911 260.346594)">4</text>
+      <text style="font-size: 9px; font-family: system-ui, -apple-system, 'Segoe UI', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #898781" x="48.598911" y="260.346594" transform="rotate(-0 48.598911 260.346594)">4</text>
      </g>
     </g>
     <g id="xtick_2">
      <g id="line2d_2"/>
      <g id="text_2">
-      <text style="font-size: 9px; font-family: system-ui, -apple-system, 'Segoe UI', system-ui, -apple-system, 'Segoe UI', 'system-ui, -apple-system, 'Segoe UI', 'DejaVu Sans', sans-serif', sans-serif, sans-serif; text-anchor: middle; fill: #898781" x="95.559153" y="260.346594" transform="rotate(-0 95.559153 260.346594)">16</text>
+      <text style="font-size: 9px; font-family: system-ui, -apple-system, 'Segoe UI', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #898781" x="95.559153" y="260.346594" transform="rotate(-0 95.559153 260.346594)">16</text>
      </g>
     </g>
     <g id="xtick_3">
      <g id="line2d_3"/>
      <g id="text_3">
-      <text style="font-size: 9px; font-family: system-ui, -apple-system, 'Segoe UI', system-ui, -apple-system, 'Segoe UI', 'system-ui, -apple-system, 'Segoe UI', 'DejaVu Sans', sans-serif', sans-serif, sans-serif; text-anchor: middle; fill: #898781" x="142.519395" y="260.346594" transform="rotate(-0 142.519395 260.346594)">64</text>
+      <text style="font-size: 9px; font-family: system-ui, -apple-system, 'Segoe UI', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #898781" x="142.519395" y="260.346594" transform="rotate(-0 142.519395 260.346594)">64</text>
      </g>
     </g>
     <g id="xtick_4">
      <g id="line2d_4"/>
      <g id="text_4">
-      <text style="font-size: 9px; font-family: system-ui, -apple-system, 'Segoe UI', system-ui, -apple-system, 'Segoe UI', 'system-ui, -apple-system, 'Segoe UI', 'DejaVu Sans', sans-serif', sans-serif, sans-serif; text-anchor: middle; fill: #898781" x="189.479637" y="260.346594" transform="rotate(-0 189.479637 260.346594)">256</text>
+      <text style="font-size: 9px; font-family: system-ui, -apple-system, 'Segoe UI', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #898781" x="189.479637" y="260.346594" transform="rotate(-0 189.479637 260.346594)">256</text>
      </g>
     </g>
     <g id="xtick_5">
      <g id="line2d_5"/>
      <g id="text_5">
-      <text style="font-size: 9px; font-family: system-ui, -apple-system, 'Segoe UI', system-ui, -apple-system, 'Segoe UI', 'system-ui, -apple-system, 'Segoe UI', 'DejaVu Sans', sans-serif', sans-serif, sans-serif; text-anchor: middle; fill: #898781" x="236.439879" y="260.346594" transform="rotate(-0 236.439879 260.346594)">1K</text>
+      <text style="font-size: 9px; font-family: system-ui, -apple-system, 'Segoe UI', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #898781" x="236.439879" y="260.346594" transform="rotate(-0 236.439879 260.346594)">1K</text>
      </g>
     </g>
     <g id="xtick_6">
      <g id="line2d_6"/>
      <g id="text_6">
-      <text style="font-size: 9px; font-family: system-ui, -apple-system, 'Segoe UI', system-ui, -apple-system, 'Segoe UI', 'system-ui, -apple-system, 'Segoe UI', 'DejaVu Sans', sans-serif', sans-serif, sans-serif; text-anchor: middle; fill: #898781" x="283.400121" y="260.346594" transform="rotate(-0 283.400121 260.346594)">4K</text>
+      <text style="font-size: 9px; font-family: system-ui, -apple-system, 'Segoe UI', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #898781" x="283.400121" y="260.346594" transform="rotate(-0 283.400121 260.346594)">4K</text>
      </g>
     </g>
     <g id="xtick_7">
      <g id="line2d_7"/>
      <g id="text_7">
-      <text style="font-size: 9px; font-family: system-ui, -apple-system, 'Segoe UI', system-ui, -apple-system, 'Segoe UI', 'system-ui, -apple-system, 'Segoe UI', 'DejaVu Sans', sans-serif', sans-serif, sans-serif; text-anchor: middle; fill: #898781" x="330.360363" y="260.346594" transform="rotate(-0 330.360363 260.346594)">16K</text>
+      <text style="font-size: 9px; font-family: system-ui, -apple-system, 'Segoe UI', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #898781" x="330.360363" y="260.346594" transform="rotate(-0 330.360363 260.346594)">16K</text>
      </g>
     </g>
     <g id="xtick_8">
      <g id="line2d_8"/>
      <g id="text_8">
-      <text style="font-size: 9px; font-family: system-ui, -apple-system, 'Segoe UI', system-ui, -apple-system, 'Segoe UI', 'system-ui, -apple-system, 'Segoe UI', 'DejaVu Sans', sans-serif', sans-serif, sans-serif; text-anchor: middle; fill: #898781" x="377.320605" y="260.346594" transform="rotate(-0 377.320605 260.346594)">64K</text>
+      <text style="font-size: 9px; font-family: system-ui, -apple-system, 'Segoe UI', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #898781" x="377.320605" y="260.346594" transform="rotate(-0 377.320605 260.346594)">64K</text>
      </g>
     </g>
     <g id="xtick_9">
      <g id="line2d_9"/>
      <g id="text_9">
-      <text style="font-size: 9px; font-family: system-ui, -apple-system, 'Segoe UI', system-ui, -apple-system, 'Segoe UI', 'system-ui, -apple-system, 'Segoe UI', 'DejaVu Sans', sans-serif', sans-serif, sans-serif; text-anchor: middle; fill: #898781" x="424.280847" y="260.346594" transform="rotate(-0 424.280847 260.346594)">256K</text>
+      <text style="font-size: 9px; font-family: system-ui, -apple-system, 'Segoe UI', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #898781" x="424.280847" y="260.346594" transform="rotate(-0 424.280847 260.346594)">256K</text>
      </g>
     </g>
     <g id="xtick_10">
      <g id="line2d_10"/>
      <g id="text_10">
-      <text style="font-size: 9px; font-family: system-ui, -apple-system, 'Segoe UI', system-ui, -apple-system, 'Segoe UI', 'system-ui, -apple-system, 'Segoe UI', 'DejaVu Sans', sans-serif', sans-serif, sans-serif; text-anchor: middle; fill: #898781" x="471.241089" y="260.346594" transform="rotate(-0 471.241089 260.346594)">1M</text>
+      <text style="font-size: 9px; font-family: system-ui, -apple-system, 'Segoe UI', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #898781" x="471.241089" y="260.346594" transform="rotate(-0 471.241089 260.346594)">1M</text>
      </g>
     </g>
    </g>
@@ -102,7 +102,7 @@ L 478.8 248.508
      </g>
      <g id="line2d_12"/>
      <g id="text_11">
-      <text style="font-size: 9px; font-family: system-ui, -apple-system, 'Segoe UI', system-ui, -apple-system, 'Segoe UI', 'system-ui, -apple-system, 'Segoe UI', 'DejaVu Sans', sans-serif', sans-serif, sans-serif; text-anchor: end; fill: #898781" x="36.04" y="251.927297" transform="rotate(-0 36.04 251.927297)">0</text>
+      <text style="font-size: 9px; font-family: system-ui, -apple-system, 'Segoe UI', 'DejaVu Sans', sans-serif; text-anchor: end; fill: #898781" x="36.04" y="251.927297" transform="rotate(-0 36.04 251.927297)">0</text>
      </g>
     </g>
     <g id="ytick_2">
@@ -113,7 +113,7 @@ L 478.8 186.732
      </g>
      <g id="line2d_14"/>
      <g id="text_12">
-      <text style="font-size: 9px; font-family: system-ui, -apple-system, 'Segoe UI', system-ui, -apple-system, 'Segoe UI', 'system-ui, -apple-system, 'Segoe UI', 'DejaVu Sans', sans-serif', sans-serif, sans-serif; text-anchor: end; fill: #898781" x="36.04" y="190.151297" transform="rotate(-0 36.04 190.151297)">50K</text>
+      <text style="font-size: 9px; font-family: system-ui, -apple-system, 'Segoe UI', 'DejaVu Sans', sans-serif; text-anchor: end; fill: #898781" x="36.04" y="190.151297" transform="rotate(-0 36.04 190.151297)">50K</text>
      </g>
     </g>
     <g id="ytick_3">
@@ -124,7 +124,7 @@ L 478.8 124.956
      </g>
      <g id="line2d_16"/>
      <g id="text_13">
-      <text style="font-size: 9px; font-family: system-ui, -apple-system, 'Segoe UI', system-ui, -apple-system, 'Segoe UI', 'system-ui, -apple-system, 'Segoe UI', 'DejaVu Sans', sans-serif', sans-serif, sans-serif; text-anchor: end; fill: #898781" x="36.04" y="128.375297" transform="rotate(-0 36.04 128.375297)">100K</text>
+      <text style="font-size: 9px; font-family: system-ui, -apple-system, 'Segoe UI', 'DejaVu Sans', sans-serif; text-anchor: end; fill: #898781" x="36.04" y="128.375297" transform="rotate(-0 36.04 128.375297)">100K</text>
      </g>
     </g>
     <g id="ytick_4">
@@ -135,7 +135,7 @@ L 478.8 63.18
      </g>
      <g id="line2d_18"/>
      <g id="text_14">
-      <text style="font-size: 9px; font-family: system-ui, -apple-system, 'Segoe UI', system-ui, -apple-system, 'Segoe UI', 'system-ui, -apple-system, 'Segoe UI', 'DejaVu Sans', sans-serif', sans-serif, sans-serif; text-anchor: end; fill: #898781" x="36.04" y="66.599297" transform="rotate(-0 36.04 66.599297)">150K</text>
+      <text style="font-size: 9px; font-family: system-ui, -apple-system, 'Segoe UI', 'DejaVu Sans', sans-serif; text-anchor: end; fill: #898781" x="36.04" y="66.599297" transform="rotate(-0 36.04 66.599297)">150K</text>
      </g>
     </g>
    </g>
@@ -261,19 +261,19 @@ L 471.241089 199.821919
 " clip-path="url(#p783c82a42f)" style="fill: none; stroke: #3987e5; stroke-width: 2; stroke-linecap: round"/>
    </g>
    <g id="text_15">
-    <text style="font-size: 9.5px; font-family: system-ui, -apple-system, 'Segoe UI', system-ui, -apple-system, 'Segoe UI', 'system-ui, -apple-system, 'Segoe UI', 'DejaVu Sans', sans-serif', sans-serif, sans-serif; text-anchor: start; fill: #c3c2b7" x="496.37396" y="232.240635" transform="rotate(-0 496.37396 232.240635)">FFmpeg</text>
+    <text style="font-size: 9.5px; font-family: system-ui, -apple-system, 'Segoe UI', 'DejaVu Sans', sans-serif; text-anchor: start; fill: #c3c2b7" x="496.37396" y="232.240635" transform="rotate(-0 496.37396 232.240635)">FFmpeg</text>
    </g>
    <g id="text_16">
-    <text style="font-size: 9.5px; font-family: system-ui, -apple-system, 'Segoe UI', system-ui, -apple-system, 'Segoe UI', 'system-ui, -apple-system, 'Segoe UI', 'DejaVu Sans', sans-serif', sans-serif, sans-serif; text-anchor: start; fill: #c3c2b7" x="496.37396" y="221.491611" transform="rotate(-0 496.37396 221.491611)">FFTW</text>
+    <text style="font-size: 9.5px; font-family: system-ui, -apple-system, 'Segoe UI', 'DejaVu Sans', sans-serif; text-anchor: start; fill: #c3c2b7" x="496.37396" y="221.491611" transform="rotate(-0 496.37396 221.491611)">FFTW</text>
    </g>
    <g id="text_17">
-    <text style="font-size: 9.5px; font-family: system-ui, -apple-system, 'Segoe UI', system-ui, -apple-system, 'Segoe UI', 'system-ui, -apple-system, 'Segoe UI', 'DejaVu Sans', sans-serif', sans-serif, sans-serif; text-anchor: start; fill: #c3c2b7" x="496.37396" y="210.742587" transform="rotate(-0 496.37396 210.742587)">PFFFT</text>
+    <text style="font-size: 9.5px; font-family: system-ui, -apple-system, 'Segoe UI', 'DejaVu Sans', sans-serif; text-anchor: start; fill: #c3c2b7" x="496.37396" y="210.742587" transform="rotate(-0 496.37396 210.742587)">PFFFT</text>
    </g>
    <g id="text_18">
-    <text style="font-size: 9.5px; font-family: system-ui, -apple-system, 'Segoe UI', system-ui, -apple-system, 'Segoe UI', 'system-ui, -apple-system, 'Segoe UI', 'DejaVu Sans', sans-serif', sans-serif, sans-serif; text-anchor: start; fill: #c3c2b7" x="496.37396" y="199.993563" transform="rotate(-0 496.37396 199.993563)">OneFFT</text>
+    <text style="font-size: 9.5px; font-family: system-ui, -apple-system, 'Segoe UI', 'DejaVu Sans', sans-serif; text-anchor: start; fill: #c3c2b7" x="496.37396" y="199.993563" transform="rotate(-0 496.37396 199.993563)">OneFFT</text>
    </g>
    <g id="text_19">
-    <text style="font-size: 9.5px; font-family: system-ui, -apple-system, 'Segoe UI', system-ui, -apple-system, 'Segoe UI', 'system-ui, -apple-system, 'Segoe UI', 'DejaVu Sans', sans-serif', sans-serif, sans-serif; text-anchor: start; fill: #c3c2b7" x="496.37396" y="189.244539" transform="rotate(-0 496.37396 189.244539)">vDSP</text>
+    <text style="font-size: 9.5px; font-family: system-ui, -apple-system, 'Segoe UI', 'DejaVu Sans', sans-serif; text-anchor: start; fill: #c3c2b7" x="496.37396" y="189.244539" transform="rotate(-0 496.37396 189.244539)">vDSP</text>
    </g>
    <g id="line2d_26">
     <path d="M 471.241089 190.045156 
@@ -402,28 +402,28 @@ L 285.912 49.14
 " style="fill: none; stroke: #d55181; stroke-width: 2; stroke-linecap: round"/>
   </g>
   <g id="text_20">
-   <text style="font-weight: 700; font-size: 12px; font-family: system-ui, -apple-system, 'Segoe UI', system-ui, -apple-system, 'Segoe UI', 'system-ui, -apple-system, 'Segoe UI', 'DejaVu Sans', sans-serif', sans-serif, sans-serif; text-anchor: start; fill: #f0efec" x="10.944" y="18.75525" transform="rotate(-0 10.944 18.75525)">Apple M2, AArch64</text>
+   <text style="font-weight: 700; font-size: 12px; font-family: system-ui, -apple-system, 'Segoe UI', 'DejaVu Sans', sans-serif; text-anchor: start; fill: #f0efec" x="10.944" y="18.75525" transform="rotate(-0 10.944 18.75525)">Apple M2, AArch64</text>
   </g>
   <g id="text_21">
-   <text style="font-size: 9px; font-family: system-ui, -apple-system, 'Segoe UI', system-ui, -apple-system, 'Segoe UI', 'system-ui, -apple-system, 'Segoe UI', 'DejaVu Sans', sans-serif', sans-serif, sans-serif; text-anchor: start; fill: #c3c2b7" x="10.944" y="34.775438" transform="rotate(-0 10.944 34.775438)">Speed in mflops = 5 n log₂(n) / (time in µs), by transform size n. Higher is better.</text>
+   <text style="font-size: 9px; font-family: system-ui, -apple-system, 'Segoe UI', 'DejaVu Sans', sans-serif; text-anchor: start; fill: #c3c2b7" x="10.944" y="34.775438" transform="rotate(-0 10.944 34.775438)">Speed in mflops = 5 n log₂(n) / (time in µs), by transform size n. Higher is better.</text>
   </g>
   <g id="text_22">
-   <text style="font-size: 9px; font-family: system-ui, -apple-system, 'Segoe UI', system-ui, -apple-system, 'Segoe UI', 'system-ui, -apple-system, 'Segoe UI', 'DejaVu Sans', sans-serif', sans-serif, sans-serif; text-anchor: start; fill: #c3c2b7" x="32.832" y="51.623438" transform="rotate(-0 32.832 51.623438)">OneFFT</text>
+   <text style="font-size: 9px; font-family: system-ui, -apple-system, 'Segoe UI', 'DejaVu Sans', sans-serif; text-anchor: start; fill: #c3c2b7" x="32.832" y="51.623438" transform="rotate(-0 32.832 51.623438)">OneFFT</text>
   </g>
   <g id="text_23">
-   <text style="font-size: 9px; font-family: system-ui, -apple-system, 'Segoe UI', system-ui, -apple-system, 'Segoe UI', 'system-ui, -apple-system, 'Segoe UI', 'DejaVu Sans', sans-serif', sans-serif, sans-serif; text-anchor: start; fill: #c3c2b7" x="102.3264" y="51.623438" transform="rotate(-0 102.3264 51.623438)">FFTW</text>
+   <text style="font-size: 9px; font-family: system-ui, -apple-system, 'Segoe UI', 'DejaVu Sans', sans-serif; text-anchor: start; fill: #c3c2b7" x="102.3264" y="51.623438" transform="rotate(-0 102.3264 51.623438)">FFTW</text>
   </g>
   <g id="text_24">
-   <text style="font-size: 9px; font-family: system-ui, -apple-system, 'Segoe UI', system-ui, -apple-system, 'Segoe UI', 'system-ui, -apple-system, 'Segoe UI', 'DejaVu Sans', sans-serif', sans-serif, sans-serif; text-anchor: start; fill: #c3c2b7" x="158.1408" y="51.623438" transform="rotate(-0 158.1408 51.623438)">FFmpeg</text>
+   <text style="font-size: 9px; font-family: system-ui, -apple-system, 'Segoe UI', 'DejaVu Sans', sans-serif; text-anchor: start; fill: #c3c2b7" x="158.1408" y="51.623438" transform="rotate(-0 158.1408 51.623438)">FFmpeg</text>
   </g>
   <g id="text_25">
-   <text style="font-size: 9px; font-family: system-ui, -apple-system, 'Segoe UI', system-ui, -apple-system, 'Segoe UI', 'system-ui, -apple-system, 'Segoe UI', 'DejaVu Sans', sans-serif', sans-serif, sans-serif; text-anchor: start; fill: #c3c2b7" x="227.6352" y="51.623438" transform="rotate(-0 227.6352 51.623438)">PFFFT</text>
+   <text style="font-size: 9px; font-family: system-ui, -apple-system, 'Segoe UI', 'DejaVu Sans', sans-serif; text-anchor: start; fill: #c3c2b7" x="227.6352" y="51.623438" transform="rotate(-0 227.6352 51.623438)">PFFFT</text>
   </g>
   <g id="text_26">
-   <text style="font-size: 9px; font-family: system-ui, -apple-system, 'Segoe UI', system-ui, -apple-system, 'Segoe UI', 'system-ui, -apple-system, 'Segoe UI', 'DejaVu Sans', sans-serif', sans-serif, sans-serif; text-anchor: start; fill: #c3c2b7" x="290.2896" y="51.623438" transform="rotate(-0 290.2896 51.623438)">vDSP</text>
+   <text style="font-size: 9px; font-family: system-ui, -apple-system, 'Segoe UI', 'DejaVu Sans', sans-serif; text-anchor: start; fill: #c3c2b7" x="290.2896" y="51.623438" transform="rotate(-0 290.2896 51.623438)">vDSP</text>
   </g>
   <g id="text_27">
-   <text style="font-style: italic; font-size: 9px; font-family: system-ui, -apple-system, 'Segoe UI', system-ui, -apple-system, 'Segoe UI', 'system-ui, -apple-system, 'Segoe UI', 'DejaVu Sans', sans-serif', sans-serif, sans-serif; text-anchor: end; fill: #898781" x="478.8" y="270.647438" transform="rotate(-0 478.8 270.647438)">n</text>
+   <text style="font-style: italic; font-size: 9px; font-family: system-ui, -apple-system, 'Segoe UI', 'DejaVu Sans', sans-serif; text-anchor: end; fill: #898781" x="478.8" y="270.647438" transform="rotate(-0 478.8 270.647438)">n</text>
   </g>
  </g>
  <defs>

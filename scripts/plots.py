@@ -14,7 +14,6 @@ Needs matplotlib. --png also writes PNG files next to the SVGs, to look at the r
 
 import math
 import os
-import re
 import sys
 
 import matplotlib
@@ -177,8 +176,7 @@ def main():
             # viewer's system font take over
             with open(target) as f:
                 svg = f.read()
-            svg = re.sub(r"font-family: *'?DejaVu Sans'?", "font-family: " + FONT, svg)
-            svg = svg.replace("'DejaVu Sans'", FONT).replace("DejaVu Sans", FONT) if "DejaVu Sans" in svg else svg
+            svg = svg.replace("'DejaVu Sans'", FONT)
             with open(target, "w") as f:
                 f.write(svg)
         print("wrote", os.path.join("docs", "plots", machine + ".svg"), "and -dark.svg")
