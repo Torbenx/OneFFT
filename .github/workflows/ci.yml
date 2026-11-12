@@ -1,0 +1,52 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  # The kernels pass their simulation tests and everything generated is up to date.
+  generated:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Kernel simulation tests
+        run: python3 gen/test_kernels.py
+      - name: Generated files are up to date
+        run: |
+          python3 gen/generate.py
+          git diff --exit-code
+
+  # Builds with warnings as errors and runs the tests on every code path of the runner:
+  # the best instruction set, the builds without the better ones, portable C, the single file
+  # distribution and the C++ interface.
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {os: ubuntu-latest, cc: gcc, cxx: g++}          # x86-64: AVX2, SSE2
+          - {os: ubuntu-latest, cc: clang, cxx: clang++}
+          - {os: ubuntu-24.04-arm, cc: gcc, cxx: g++}       # AArch64
+          - {os: ubuntu-24.04-arm, cc: clang, cxx: clang++}
+          - {os: macos-latest, cc: clang, cxx: clang++}     # Apple silicon
+          - {os: macos-13, cc: clang, cxx: clang++}         # x86-64 macOS
+    runs-on: ${{ matrix.os }}
+    env:
+      CC: ${{ matrix.cc }}
+      CXX: ${{ matrix.cxx }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_FLAGS=-Werror -DCMAKE_CXX_FLAGS=-Werror
+      - name: Build
+        run: cmake --build build
+      - name: Test
+        run: ctest --test-dir build --output-on-failure
+
+  bazel:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test
+        run: bazel test //... --test_output=errors

@@ -1,0 +1,8 @@
+/.tools/
+/build/
+/build-*/
+__pycache__/
+*.pyc
+/bazel-*
+/MODULE.bazel.lock
+/scripts/machines.local

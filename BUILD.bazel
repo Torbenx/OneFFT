@@ -1,0 +1,30 @@
+load("@rules_cc//cc:defs.bzl", "cc_library", "cc_test")
+
+package(default_visibility = ["//visibility:public"])
+
+# OneFFT is one C file; the generated kernel sources are textual includes of it. The kernels are
+# inline assembly in GCC/Clang syntax. No special compiler flags are needed.
+cc_library(
+    name = "onefft",
+    srcs = ["src/onefft.c"],
+    hdrs = ["include/onefft.h"],
+    includes = ["include"],
+    linkopts = ["-lm"],
+    textual_hdrs = glob(["src/*.inc"]),
+)
+
+cc_test(
+    name = "test_onefft",
+    size = "small",
+    srcs = ["tests/test_onefft.c"],
+    args = ["18"],
+    linkopts = ["-lpthread"],
+    deps = [":onefft"],
+)
+
+cc_test(
+    name = "test_cpp",
+    size = "small",
+    srcs = ["tests/test_cpp.cpp"],
+    deps = [":onefft"],
+)
