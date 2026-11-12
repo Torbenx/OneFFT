@@ -28,6 +28,10 @@
 #ifndef ONEFFT_NO_AVX2
 #define ONEFFT_AVX2 1
 #include "onefft_avx2.inc"
+#ifndef ONEFFT_NO_AVX512
+#define ONEFFT_AVX512 1
+#include "onefft_avx512.inc"
+#endif
 #endif
 #endif
 
@@ -524,7 +528,8 @@ static size_t onefft_neon_plan(onefft_plan *plan, float *memory) {
 
 typedef struct {
     unsigned lane_bits;
-    onefft_first_fn *f4[2], *f_odd[2]; /* radix 4; radix 2 (SSE2) or 8 (AVX2) for odd log2n */
+    size_t (*low_bits)(size_t region, unsigned bits); /* the low output bits of a region */
+    onefft_first_fn *f4[2], *f_odd[2]; /* radix 4; radix 2 (SSE2) or 8 (AVX2, AVX-512) */
     onefft_middle_fn *c4;
     onefft_last_fn *l4[2];             /* SSE2 */
     onefft_last_fn *la, *la2, *la8, *la8x, *lb[2]; /* AVX2 */
@@ -532,13 +537,13 @@ typedef struct {
 } onefft_x86_kernels;
 
 static const onefft_x86_kernels onefft_sse2_kernels = {
-    2, {onefft_sse2_f4, onefft_sse2_f4i}, {onefft_sse2_f2, onefft_sse2_f2i}, onefft_sse2_c4,
+    2, onefft_bit_reverse, {onefft_sse2_f4, onefft_sse2_f4i}, {onefft_sse2_f2, onefft_sse2_f2i}, onefft_sse2_c4,
     {onefft_sse2_l4, onefft_sse2_l4i}, NULL, NULL, NULL, NULL, {NULL, NULL},
     {{0}, {0}, {0}, {onefft_sse2_n8, onefft_sse2_n8i}, {onefft_sse2_n16, onefft_sse2_n16i}, {0}}};
 
 #ifdef ONEFFT_AVX2
 static const onefft_x86_kernels onefft_avx2_kernels = {
-    3, {onefft_avx2_f4, onefft_avx2_f4i}, {onefft_avx2_f8, onefft_avx2_f8i}, onefft_avx2_c4,
+    3, onefft_bit_reverse, {onefft_avx2_f4, onefft_avx2_f4i}, {onefft_avx2_f8, onefft_avx2_f8i}, onefft_avx2_c4,
     {NULL, NULL}, onefft_avx2_la, onefft_avx2_la2, onefft_avx2_la8, onefft_avx2_la8x,
     {onefft_avx2_lb, onefft_avx2_lbi},
     {{0}, {0}, {0}, {onefft_sse2_n8, onefft_sse2_n8i}, {onefft_avx2_n16, onefft_avx2_n16i},
@@ -550,14 +555,14 @@ static const unsigned char onefft_avx2_element[8] = {0, 1, 4, 5, 2, 3, 6, 7};
 
 /* Adds a radix 4 middle pass that transforms two index bits after `done` are finished. The
  * twiddle of butterfly j in region r is exp(-2 pi i K / 2^(done + 2)), K = low + (j << shift)
- * where `low` is r with its `region_bits` bits reversed. Returns the new table size. */
+ * where `low` are the output bits that the region stands for. Returns the new table size. */
 static size_t onefft_x86_middle(onefft_plan *plan, float *memory, size_t floats, const onefft_x86_kernels *kernels,
                                 unsigned done, unsigned region_bits, size_t s_high, size_t s_low, size_t inner,
                                 size_t skip, size_t blocks) {
     size_t start = floats, regions = (size_t)1 << region_bits;
     for (size_t r = 0; r < regions; r++) {
         for (size_t j = 0; j < inner; j++) {
-            uint64_t k = onefft_bit_reverse(r, region_bits) + (j << region_bits);
+            uint64_t k = kernels->low_bits(r, region_bits) + (j << region_bits);
             floats += onefft_middle_entry(memory ? memory + floats : NULL, k, done + 2, 4);
         }
     }
@@ -739,14 +744,171 @@ static size_t onefft_x86_plan(onefft_plan *plan, float *memory, const onefft_x86
     return floats * sizeof(float);
 }
 
+/* ---- AVX-512 --------------------------------------------------------------------------------
+ *
+ * Not tuned on hardware yet. 16 lanes and 32 registers: four index bits sit in the lanes, a
+ * kernel holds 8 complex vectors. Transforms below 512 points use the AVX2 plan.
+ *
+ *   f8          the top 3 index bits
+ *   c4          2 bits each: first bit n-4 (see below) with bit n-5, then nested passes
+ *   la3 / la2   index bits (4,) 3, 2
+ *   lb          index bits 1, 0
+ *
+ * The four exchanges of lanes and registers in la and lb are one shuffle per register each
+ * only in one arrangement (gen/onefft_gen/avx512_kernels.py): the top four position bits of the
+ * output hold, from the top, output bits 0, 2, 1, 3. Output bit 3 comes from index bit n-4,
+ * which the first pass therefore leaves at that position.
+ */
+#ifdef ONEFFT_AVX512
+
+static size_t onefft_avx512_low_bits(size_t region, unsigned bits) {
+    static const unsigned char order[4] = {0, 2, 1, 3};
+    size_t low = 0;
+    for (unsigned i = 0; i < bits; i++) low |= ((region >> (bits - 1 - i)) & 1) << order[i];
+    return low;
+}
+
+static const onefft_x86_kernels onefft_avx512_kernels = {
+    4, onefft_avx512_low_bits, {NULL, NULL}, {onefft_avx512_f8, onefft_avx512_f8i}, onefft_avx512_c4,
+    {NULL, NULL}, onefft_avx512_la3, onefft_avx512_la2, NULL, NULL, {onefft_avx512_lb, onefft_avx512_lbi}, {{0}}};
+
+/* The element of 16 consecutive values that each lane holds. */
+static const unsigned char onefft_avx512_element[16] = {0, 1, 8, 9, 2, 3, 10, 11, 4, 5, 12, 13, 6, 7, 14, 15};
+
+static size_t onefft_avx512_plan(onefft_plan *plan, float *memory) {
+    const onefft_x86_kernels *kernels = &onefft_avx512_kernels;
+    unsigned log2n = plan->log2n;
+    int inverse = plan->inverse;
+    if (log2n < 9) return onefft_x86_plan(plan, memory, &onefft_avx2_kernels);
+    size_t n = plan->n, floats = 0, vector = 128;
+    if (memory) plan->middle_count = 0;
+
+    /* First pass: counts through index bits n-4 .. 4. The top one stays, the others are
+     * reversed. */
+    unsigned count_bits = log2n - 7, low_bits = count_bits - 1;
+    size_t first_count = (size_t)1 << count_bits;
+    if (memory) {
+        uint32_t *table = (uint32_t *)(memory + floats);
+        for (size_t a = 0; a < first_count; a++) {
+            size_t low = onefft_bit_reverse(a & (((size_t)1 << low_bits) - 1), low_bits);
+            table[2 * a] = (uint32_t)(a << 4);
+            table[2 * a + 1] = (uint32_t)(((a >> low_bits << low_bits) | low) << 4);
+        }
+        plan->first = kernels->f_odd[inverse];
+        plan->first_table = table;
+        plan->first_count = first_count;
+        plan->first_in_stride = plan->first_out_stride = n;
+    }
+    floats += 2 * first_count;
+    floats = (floats + 15) & ~(size_t)15;
+
+    /* Index bit n-4 at the fourth highest position with bit n-5 next to the lanes: not nested. */
+    unsigned done = 3;
+    floats = onefft_x86_middle(plan, memory, floats, kernels, done, 3, n / 2, vector, 1, vector, n >> 9);
+    done += 2;
+    if (memory) plan->nested_from = plan->middle_count;
+
+    /* Nested passes, then la3 for an even and la2 for an odd number of index bits. */
+    int three = log2n % 2 == 0;
+    for (; done + (three ? 5 : 4) < log2n; done += 2) {
+        size_t s_high = (size_t)8 << done;
+        floats = onefft_x86_middle(plan, memory, floats, kernels, done, 4, s_high, 2 * s_high, (size_t)1 << (done - 4),
+                                   3 * s_high, (n / 2) / (4 * s_high));
+    }
+
+    /* la: butterfly j of region r (output bits 0 and 2) has the low output bits
+     * K = k0 + 2 k1 + 4 k2 + 8 k3 + 16 j. Output bits 1 and 3 (k1, k3) select the vector at
+     * first and move into the lanes with the two exchanges: k3 to lane bit b0, k1 to q1.
+     *   la3 only: index bit 4, a scalar twiddle exp(-2 pi i 16 K / N) per (k1, k3)
+     *   index bit 3: a twiddle vector exp(-2 pi i 8 K / N) per k1, k3 varying over the lanes
+     *   index bit 2: a twiddle vector exp(-2 pi i 4 K / N), for la3 a second one turned by an
+     *                eighth for the upper output of index bit 4 */
+    size_t start = floats, count = n >> (three ? 9 : 8);
+    for (size_t r = 0; r < 4; r++) {
+        for (size_t j = 0; j < count; j++) {
+            uint64_t base = (r >> 1) + 4 * (r & 1) + 16 * j;
+            float *table = memory ? memory + floats : NULL;
+            if (three) {
+                for (size_t s = 0; s < 4; s++) onefft_table_root(table, 4, s, 16 * (base + 2 * (s >> 1) + 8 * (s & 1)), log2n);
+                floats += 8;
+            }
+            for (size_t k1 = 0; k1 < 2; k1++) {
+                table = memory ? memory + floats : NULL;
+                for (size_t lane = 0; lane < 16; lane++) {
+                    onefft_table_root(table, 16, lane, 8 * (base + 2 * k1 + 8 * (lane & 1)), log2n);
+                }
+                floats += 32;
+            }
+            for (size_t c = 0; c < (three ? 2u : 1u); c++) {
+                table = memory ? memory + floats : NULL;
+                for (size_t lane = 0; lane < 16; lane++) {
+                    onefft_table_root(table, 16, lane, 4 * (base + 2 * (lane >> 3) + 8 * (lane & 1)) + (n >> 3) * c, log2n);
+                }
+                floats += 32;
+            }
+        }
+    }
+    if (memory) {
+        onefft_last *l = &plan->last[0];
+        l->run = three ? kernels->la : kernels->la2;
+        l->tw = memory + start;
+        l->regions = 4;
+        l->stride = three ? n / 4 : n / 2;
+        l->count = count;
+    }
+    floats = (floats + 15) & ~(size_t)15;
+
+    /* lb: butterfly j handles the output indices K + (N/4) q, K = element + 16 j. */
+    start = floats;
+    for (size_t j = 0; j < n >> 6; j++) {
+        for (size_t l = 1; l < 4; l++) {
+            float *table = memory ? memory + floats : NULL;
+            for (size_t lane = 0; lane < 16; lane++) {
+                onefft_table_root(table, 16, lane, l * (onefft_avx512_element[lane] + 16 * j), log2n);
+            }
+            floats += 32;
+        }
+    }
+    if (memory) {
+        onefft_last *l = &plan->last[1];
+        l->run = kernels->lb[inverse];
+        l->tw = memory + start;
+        l->regions = 1;
+        l->stride = 2 * n;
+        l->count = n >> 6;
+        plan->last_count = 2;
+        plan->execute = onefft_execute_passes;
+    }
+    return floats * sizeof(float);
+}
+
+#endif /* ONEFFT_AVX512 */
+
 /* The best instruction set that this build contains and the processor and operating system
- * support. */
-static const onefft_x86_kernels *onefft_x86_select(void) {
+ * support: 4 for AVX-512, 3 for AVX2 with FMA, 2 for SSE2 (the number of lane bits). */
+static unsigned onefft_x86_select(void) {
 #ifdef ONEFFT_AVX2
     __builtin_cpu_init();
-    if (__builtin_cpu_supports("avx2") && __builtin_cpu_supports("fma")) return &onefft_avx2_kernels;
+    if (__builtin_cpu_supports("avx2") && __builtin_cpu_supports("fma")) {
+#ifdef ONEFFT_AVX512
+        if (__builtin_cpu_supports("avx512f")) return 4;
 #endif
-    return &onefft_sse2_kernels;
+        return 3;
+    }
+#endif
+    return 2;
+}
+
+static size_t onefft_x86_build(onefft_plan *plan, float *memory) {
+    switch (onefft_x86_select()) {
+#ifdef ONEFFT_AVX512
+    case 4: return onefft_avx512_plan(plan, memory);
+#endif
+#ifdef ONEFFT_AVX2
+    case 3: return onefft_x86_plan(plan, memory, &onefft_avx2_kernels);
+#endif
+    default: return onefft_x86_plan(plan, memory, &onefft_sse2_kernels);
+    }
 }
 
 #endif /* ONEFFT_X86 */
@@ -757,7 +919,7 @@ static size_t onefft_build(onefft_plan *plan, float *memory) {
 #if defined(ONEFFT_NEON)
     return onefft_neon_plan(plan, memory);
 #elif defined(ONEFFT_X86)
-    return onefft_x86_plan(plan, memory, onefft_x86_select());
+    return onefft_x86_build(plan, memory);
 #else
     return onefft_scalar_plan(plan, memory);
 #endif
@@ -767,7 +929,11 @@ const char *onefft_implementation(void) {
 #if defined(ONEFFT_NEON)
     return ONEFFT_NEON_FMA ? "neon (fused)" : "neon";
 #elif defined(ONEFFT_X86)
-    return onefft_x86_select()->lane_bits == 3 ? "avx2" : "sse2";
+    switch (onefft_x86_select()) {
+    case 4: return "avx512";
+    case 3: return "avx2";
+    default: return "sse2";
+    }
 #else
     return "portable";
 #endif

@@ -202,9 +202,27 @@ With these, AVX2 needs `n/2 - 1` passes for an even number of bits `n` and `(n-1
 one. SSE2 has no fused multiply-add and stays with radix 4 everywhere (and a radix 2 first pass
 for odd `n`); it exists for the few x86-64 processors without AVX2 and was not tuned.
 
-AVX-512 is not implemented, such processors run the AVX2 kernels. The design carries over
-(8 vectors of 16 lanes, radix 8 everywhere, embedded broadcasts for the scalar twiddles, four
-lane bits exchanged in two last passes), but no AVX-512 machine was available to tune it on.
+### AVX-512
+
+16 lanes and 32 registers: four index bits sit in the lanes, a kernel holds 8 complex vectors
+with room to spare, and scalar twiddles are embedded broadcast operands. The passes are a radix
+8 first pass, radix 4 middle passes, and two last passes that exchange two lane bits each:
+
+```
+la3 / la2   bits (4,) 3, 2   (bit 4 across registers;) exchange and transform bit 3, then bit 2
+lb          bits 1, 0        exchange both, then transform them as in the other last passes
+```
+
+Each exchange is again one shuffle per register (`unpcklps`/`unpckhps` within the 128 bit blocks,
+`vshuff32x4` between them), which works out in exactly one arrangement: index bits 3, 2, 1, 0
+trade places with output bits 3, 1, 2, 0. The top four position bits of the output therefore
+hold output bits 0, 2, 1, 3 until the last passes, and the first pass leaves the index bit that
+becomes output bit 3 at its place instead of bit reversing it.
+
+These kernels are verified in simulation and under Intel's emulator (SDE), but they have not
+run on hardware and are not tuned: no radix 8 middle pass yet, and nothing is known about how
+they compare to the AVX2 kernels on a given processor. They are used from 512 points up on
+processors with AVX-512F; `-DONEFFT_NO_AVX512` leaves them out.
 
 ## Large transforms
 

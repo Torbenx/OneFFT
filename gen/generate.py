@@ -12,7 +12,7 @@ import os
 import re
 import sys
 
-from onefft_gen import neon_kernels, x86_kernels
+from onefft_gen import avx512_kernels, neon_kernels, x86_kernels
 
 HEADER = """/*
  * OneFFT %s kernels.
@@ -82,6 +82,8 @@ def main():
     emit(os.path.join(src, "onefft_sse2.inc"), "x86-64 SSE2", x86_kernels.all_kernels("sse2"))
     emit(os.path.join(src, "onefft_avx2.inc"), "x86-64 AVX2 and FMA", x86_kernels.all_kernels("avx2"),
          '__attribute__((target("avx2,fma"))) ')
+    emit(os.path.join(src, "onefft_avx512.inc"), "x86-64 AVX-512", avx512_kernels.all_kernels(),
+         '__attribute__((target("avx512f"))) ')
     amalgamate(root)
     return 0
 

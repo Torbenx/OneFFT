@@ -95,7 +95,7 @@ class X86(Asm):
         immediate = "$%d, " % imm if imm is not None else ""
         if isinstance(b, Mem):
             assert not b.broadcast or self.isa == "avx512"
-            b_regs, b_text = b.regs(), b.text(2) + ("{{1to16}}" if b.broadcast else "")
+            b_regs, b_text = b.regs(), b.text(2) + ("%{{1to16%}}" if b.broadcast else "")
 
             def value(m):
                 data = m.load(b.address(m), 1 if b.broadcast else self.lanes)
@@ -156,7 +156,7 @@ class X86(Asm):
         """d += sign * a * w."""
         if self.fma:
             if isinstance(w, Mem):
-                w_regs, w_text = w.regs(), w.text(2) + ("{{1to16}}" if w.broadcast else "")
+                w_regs, w_text = w.regs(), w.text(2) + ("%{{1to16%}}" if w.broadcast else "")
 
                 def value(m):
                     data = m.load(w.address(m), 1 if w.broadcast else self.lanes)

@@ -16,7 +16,7 @@ host)
     # the better ones, down to portable C.
     mkdir -p "$root/build/host"
     case $(uname -m) in
-    x86_64) variants=("" -DONEFFT_NO_AVX2 -DONEFFT_NO_SIMD) ;;
+    x86_64) variants=("" -DONEFFT_NO_AVX512 -DONEFFT_NO_AVX2 -DONEFFT_NO_SIMD) ;;
     *) variants=("" -DONEFFT_NEON_FMA=0 -DONEFFT_NEON_FMA=1 -DONEFFT_NO_SIMD) ;; # both forms of the passes
     esac
     for variant in "${variants[@]}"; do

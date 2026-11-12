@@ -263,6 +263,76 @@ def x86_transform(kernels, isa, log2n, flat, inverse=False):
     return m.load(dst, 2 * n)
 
 
+def avx512_transform(kernels, log2n, flat, inverse=False):
+    """Runs a complete AVX-512 transform (512 points or more) in simulation."""
+    from .avx512_kernels import ELEMENT_OF as element_of, low_bits
+
+    n = 1 << log2n
+    assert log2n >= 9
+    kernel = {k.name[len("onefft_avx512_"):]: k for k in kernels}
+    suffix = "i" if inverse else ""
+    vector = 128
+    m = Machine(64 * n + 4096)
+    src, dst, table, args = 0, 8 * n, 16 * n, 60 * n
+    m.store(src, flat)
+
+    # First pass: counts through index bits n-4 .. 4. Bit n-4 keeps its place (its result,
+    # output bit 3, is an exchange partner of the last passes), the others are reversed.
+    count_bits = log2n - 7
+    first = []
+    for a in range(1 << count_bits):
+        low = bit_reverse(a & ((1 << (count_bits - 1)) - 1), count_bits - 1)
+        first += [a << 4, ((a >> (count_bits - 1) << (count_bits - 1)) | low) << 4]
+    m.store(table, first)
+    kernel["f8" + suffix].run(m, **{"in": src, "out": dst, "table": table, "count": 1 << count_bits,
+                                    "in_stride": n, "out_stride": n})
+    done = 3
+
+    def middle(region_bits, s_high, s_low, inner, blocks, skip):
+        nonlocal done
+        regions, region_bytes = 1 << region_bits, 8 * n >> region_bits
+        tw = []
+        for r in range(regions):
+            for j in range(inner):
+                tw += middle_entry(low_bits(r, region_bits) + (j << region_bits), 1 << (done + 2), 4)
+        m.store(table, tw)
+        walked = blocks * (inner * vector + skip)
+        middle_args(m, args, s_high=s_high, s_low=s_low, inner=inner, skip=skip, region_skip=region_bytes - walked,
+                    tw_region=4 * len(tw) // regions)
+        kernel["c4"].run(m, data=dst, tw=table, args=args, blocks=blocks, regions=regions)
+        done += 2
+
+    # index bit n-4 at the fourth highest position, n-5 next to the lanes
+    middle(3, n // 2, vector, 1, n >> 9, vector)
+    three = log2n % 2 == 0  # the pass before the last takes 3 bits if that makes the total fit
+    while done < log2n - (5 if three else 4):
+        s_high = 8 << done
+        middle(4, s_high, 2 * s_high, 1 << (done - 4), (n // 2) // (4 * s_high), 3 * s_high)
+
+    count = n >> (9 if three else 8)
+    tw = []
+    for r in range(4):
+        for j in range(count):
+            def k4(k1, k3):
+                return (r >> 1) + 4 * (r & 1) + 2 * k1 + 8 * k3 + 16 * j
+            if three:
+                tw += split([root(16 * k4(s >> 1, s & 1), n) for s in range(4)])
+            for k1 in range(2):
+                tw += split([root(8 * k4(k1, lane & 1), n) for lane in range(16)])
+            for c in range(2 if three else 1):
+                tw += split([root(4 * k4(lane >> 3, lane & 1) + (n >> 3) * c, n) for lane in range(16)])
+    m.store(table, tw)
+    kernel["la3" if three else "la2"].run(m, data=dst, tw=table, stride=n // 4 if three else n // 2, count=count,
+                                         regions=4)
+    tw = []
+    for j in range(n >> 6):
+        for l in range(1, 4):
+            tw += split([root(l * (element_of[lane] + 16 * j), n) for lane in range(16)])
+    m.store(table, tw)
+    kernel["lb" + suffix].run(m, data=dst, tw=table, stride=2 * n, count=n >> 6, regions=1)
+    return m.load(dst, 2 * n)
+
+
 def dft(x, inverse=False):
     """Reference transform (iterative radix 2, double precision)."""
     n = len(x)

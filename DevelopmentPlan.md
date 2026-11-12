@@ -55,16 +55,18 @@ the Intel i5-9600K and the EPYC 7443P.
          second form of the passes from fused multiply-add butterflies, the default on Apple.
 * X1-X5  AVX2 (+FMA), measured and tuned on Zen 2, Zen 3 and Skylake: radix 8 first pass and
          radix 8 pass before the last, both computing in place in 16 registers.
+* R4     CI runs on GitHub for Linux x86-64 and AArch64 (GCC, Clang), macOS and Bazel.
 * X6/X7  SSE2: complete and tested, not tuned (every x86-64 machine at hand has AVX2).
 * R1-R3  C and C++ interface (include/onefft.h), single file distribution (dist/), CMake, Bazel.
-* R4     .github/workflows/ci.yml is written but has never run.
 * R5     README.md, docs/design.md, docs/measurements.md.
 
 Open:
 
-* X8/X9  AVX-512 is not implemented: none of the machines has it. Such processors run the AVX2
-         kernels. docs/design.md sketches the layout; Intel SDE would do for correctness tests
-         but tuning needs hardware (ideally one Intel and one AMD Zen 4 or later).
+* X8/X9  AVX-512 is implemented (gen/onefft_gen/avx512_kernels.py) and passes the tests under
+         Intel SDE (`sde64 -icx -- build/host/test_onefft`), but it has never run on hardware.
+         To do once a machine is there: benchmark against the AVX2 kernels (and decide per size
+         which to use), add a radix 8 middle pass, consider radix 16 in-place passes (possible
+         with embedded broadcasts), check frequency effects on older Intel processors.
 * Between 64 and 4096 points FFTW with patient planning is still up to 13% faster on some
   machines (see docs/measurements.md); Apple's vDSP is 1.2 to 2.3 times faster on the M2.
   Ideas that were not tried: vendor specific AVX2 kernels (the in-place kernels are limited by
@@ -72,4 +74,3 @@ Open:
   passes on x86.
 * No LICENSE file: the choice is the owner's.
 * Windows (MinGW/Clang) is untested. MSVC is not supported by design.
-* CI has to be run once on GitHub; the workflow may need small fixes.

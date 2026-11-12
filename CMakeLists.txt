@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.16)
 project(onefft VERSION 0.1.0 DESCRIPTION "A simple and fast SIMD FFT for power-of-two sizes" LANGUAGES C)
 
 # OneFFT is one C file. The kernels are inline assembly in GCC/Clang syntax, so those are the
-# compilers it builds with; no special flags are needed (the AVX2 kernels are selected at run time).
+# compilers it builds with; no special flags are needed (the instruction set is selected at run time).
 string(COMPARE EQUAL "${CMAKE_SOURCE_DIR}" "${PROJECT_SOURCE_DIR}" ONEFFT_IS_TOP_LEVEL)
 option(ONEFFT_BUILD_TESTS "Build the OneFFT tests" ${ONEFFT_IS_TOP_LEVEL})
 option(ONEFFT_INSTALL "Generate install rules for OneFFT" ${ONEFFT_IS_TOP_LEVEL})
@@ -47,6 +47,7 @@ if(ONEFFT_BUILD_TESTS)
         add_test(NAME ${name} COMMAND ${name} 18)
     endfunction()
     onefft_add_test(test_onefft src/onefft.c)
+    onefft_add_test(test_onefft_no_avx512 src/onefft.c ONEFFT_NO_AVX512)
     onefft_add_test(test_onefft_no_avx2 src/onefft.c ONEFFT_NO_AVX2)
     onefft_add_test(test_onefft_portable src/onefft.c ONEFFT_NO_SIMD)
     # AArch64: both forms of the middle and last passes (the definitions do nothing elsewhere)

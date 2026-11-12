@@ -2,7 +2,7 @@
 
 A simple and fast FFT for power-of-two sizes: complex to complex, single precision, out of place.
 
-* **Fast.** SIMD kernels for AArch64 (Advanced SIMD) and x86-64 (AVX2 with FMA, or SSE2). On
+* **Fast.** SIMD kernels for AArch64 (Advanced SIMD) and x86-64 (AVX2 with FMA, SSE2). On
   seven machines it is typically 1.3 to 3 times faster than FFmpeg and PFFFT, on par with FFTW's
   patient plans between 64 and 4096 points, and 1.2 to 4 times faster than FFTW above that.
   See [Performance](#performance).
@@ -78,8 +78,8 @@ target_link_libraries(app PRIVATE onefft::onefft)
 
 Requirements: GCC or Clang (the kernels are inline assembly in their syntax; MSVC's `cl.exe` is
 not supported). On targets other than AArch64 and x86-64, and with `-DONEFFT_NO_SIMD`, a portable
-C implementation is used; it is correct but several times slower. `-DONEFFT_NO_AVX2` leaves the
-AVX2 kernels out of an x86-64 build.
+C implementation is used; it is correct but several times slower. `-DONEFFT_NO_AVX512` and
+`-DONEFFT_NO_AVX2` leave the kernels for these instruction sets out of an x86-64 build.
 
 ## Performance
 
@@ -126,8 +126,9 @@ Reproduce with `scripts/third_party.sh <target>` (fetches and builds the other l
 
 * Power-of-two sizes only, single precision only, complex data only.
 * Out of place only: `in` and `out` must not overlap.
-* There are no AVX-512 kernels; such processors use the AVX2 ones. The SSE2 kernels (for x86-64
-  processors without AVX2) are complete but were not tuned.
+* The AVX-512 kernels are verified under an emulator only and are not tuned; nothing is known
+  yet about their speed. `-DONEFFT_NO_AVX512` leaves them out. The SSE2 kernels (for x86-64
+  processors without AVX2) are complete but were not tuned either.
 * Tested on Linux, Android and macOS. Windows with MinGW or Clang should work but is untested.
 
 ## Development

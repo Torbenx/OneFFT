@@ -18,8 +18,8 @@
  *  - onefft_plan_*: create the tables for a size explicitly and decide yourself when they are
  *    created and freed.
  *
- * SIMD kernels exist for AArch64 (Advanced SIMD) and x86-64 (AVX2 with FMA, chosen at run time
- * if the processor has them, otherwise SSE2). Other targets use portable C.
+ * SIMD kernels exist for AArch64 (Advanced SIMD) and x86-64 (AVX-512 or AVX2 with FMA, chosen at
+ * run time if the processor has them, otherwise SSE2). Other targets use portable C.
  */
 #ifndef ONEFFT_H
 #define ONEFFT_H
@@ -88,7 +88,8 @@ size_t onefft_plan_size(const onefft_plan *plan);
 /* ---- information ----------------------------------------------------------------------------
  */
 
-/* The kernels in use on this machine: "neon", "neon (fused)", "avx2", "sse2" or "portable". */
+/* The kernels in use on this machine: "neon", "neon (fused)", "avx512", "avx2", "sse2" or
+ * "portable". */
 const char *onefft_implementation(void);
 
 #ifdef __cplusplus

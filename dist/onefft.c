@@ -7438,6 +7438,857 @@ __attribute__((target("avx2,fma"))) static void onefft_avx2_la8x(float *data, co
 }
 
 #pragma GCC diagnostic pop
+#ifndef ONEFFT_NO_AVX512
+#define ONEFFT_AVX512 1
+/*
+ * OneFFT x86-64 AVX-512 kernels.
+ *
+ * GENERATED FILE, DO NOT EDIT. Change gen/onefft_gen and run gen/generate.py instead.
+ *
+ * Every kernel is a normal C function whose body is one inline assembly block. The SIMD registers
+ * are assigned by the generator, the general purpose registers by the C compiler.
+ */
+
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Woverlength-strings"
+
+static const float onefft_avx512_f8_consts[4] ONEFFT_ALIGNED(64) = {
+    0x1.6a09e667f3bcdp-1f, 0x1.6a09e667f3bcdp-1f, 0x1.6a09e667f3bcdp-1f, 0x1.6a09e667f3bcdp-1f,
+};
+/* First pass, radix 8. For each of the `count` entries (a, b) of `table`: reads 8 interleaved
+ * vectors from in + 8*a + u*in_stride, transforms across them and writes output q as a split
+ * vector to out + 8*b + r*out_stride, where r is q with its bits reversed (and the lower two exchanged). */
+__attribute__((target("avx512f"))) static void onefft_avx512_f8(const float *in, float *out, const uint32_t *table, size_t count, size_t in_stride, size_t out_stride) {
+    const float *src;
+    float *dst;
+    size_t a;
+    size_t b;
+    const float *consts = onefft_avx512_f8_consts;
+    __asm__ volatile(
+        "1:\n"
+        "    movl (%[table]), %k[a]\n"
+        "    movl 4(%[table]), %k[b]\n"
+        "    lea 8(%[table]), %[table]\n"
+        "    lea (%[in],%[a],8), %[src]\n"
+        "    lea (%[out],%[b],8), %[dst]\n"
+        "    vmovups (%[src]), %%zmm0\n"
+        "    vshufps $136, 64(%[src]), %%zmm0, %%zmm1\n"
+        "    vshufps $221, 64(%[src]), %%zmm0, %%zmm0\n"
+        "    lea (%[src],%[in_stride],1), %[src]\n"
+        "    vmovups (%[src]), %%zmm2\n"
+        "    vshufps $136, 64(%[src]), %%zmm2, %%zmm3\n"
+        "    vshufps $221, 64(%[src]), %%zmm2, %%zmm2\n"
+        "    lea (%[src],%[in_stride],1), %[src]\n"
+        "    vmovups (%[src]), %%zmm4\n"
+        "    vshufps $136, 64(%[src]), %%zmm4, %%zmm5\n"
+        "    vshufps $221, 64(%[src]), %%zmm4, %%zmm4\n"
+        "    lea (%[src],%[in_stride],1), %[src]\n"
+        "    vmovups (%[src]), %%zmm6\n"
+        "    vshufps $136, 64(%[src]), %%zmm6, %%zmm7\n"
+        "    vshufps $221, 64(%[src]), %%zmm6, %%zmm6\n"
+        "    lea (%[src],%[in_stride],1), %[src]\n"
+        "    vmovups (%[src]), %%zmm8\n"
+        "    vshufps $136, 64(%[src]), %%zmm8, %%zmm9\n"
+        "    vshufps $221, 64(%[src]), %%zmm8, %%zmm8\n"
+        "    lea (%[src],%[in_stride],1), %[src]\n"
+        "    vaddps %%zmm9, %%zmm1, %%zmm10\n"
+        "    vaddps %%zmm8, %%zmm0, %%zmm11\n"
+        "    vsubps %%zmm9, %%zmm1, %%zmm1\n"
+        "    vmovups (%[src]), %%zmm9\n"
+        "    vsubps %%zmm8, %%zmm0, %%zmm0\n"
+        "    vshufps $136, 64(%[src]), %%zmm9, %%zmm8\n"
+        "    vshufps $221, 64(%[src]), %%zmm9, %%zmm9\n"
+        "    lea (%[src],%[in_stride],1), %[src]\n"
+        "    vsubps %%zmm8, %%zmm3, %%zmm12\n"
+        "    vsubps %%zmm9, %%zmm2, %%zmm13\n"
+        "    vaddps %%zmm8, %%zmm3, %%zmm3\n"
+        "    vmovups (%[src]), %%zmm8\n"
+        "    vaddps %%zmm9, %%zmm2, %%zmm2\n"
+        "    vshufps $136, 64(%[src]), %%zmm8, %%zmm9\n"
+        "    vshufps $221, 64(%[src]), %%zmm8, %%zmm8\n"
+        "    lea (%[src],%[in_stride],1), %[src]\n"
+        "    vaddps %%zmm9, %%zmm5, %%zmm14\n"
+        "    vaddps %%zmm8, %%zmm4, %%zmm15\n"
+        "    vsubps %%zmm9, %%zmm5, %%zmm5\n"
+        "    vmovups (%[src]), %%zmm9\n"
+        "    vsubps %%zmm8, %%zmm4, %%zmm4\n"
+        "    vaddps %%zmm14, %%zmm10, %%zmm8\n"
+        "    vaddps %%zmm15, %%zmm11, %%zmm16\n"
+        "    vsubps %%zmm14, %%zmm10, %%zmm10\n"
+        "    vsubps %%zmm15, %%zmm11, %%zmm11\n"
+        "    vaddps %%zmm4, %%zmm1, %%zmm14\n"
+        "    vsubps %%zmm5, %%zmm0, %%zmm15\n"
+        "    vshufps $136, 64(%[src]), %%zmm9, %%zmm17\n"
+        "    vshufps $221, 64(%[src]), %%zmm9, %%zmm9\n"
+        "    vsubps %%zmm4, %%zmm1, %%zmm1\n"
+        "    vsubps %%zmm17, %%zmm7, %%zmm4\n"
+        "    vsubps %%zmm9, %%zmm6, %%zmm18\n"
+        "    vaddps %%zmm17, %%zmm7, %%zmm7\n"
+        "    vaddps %%zmm9, %%zmm6, %%zmm6\n"
+        "    vaddps %%zmm5, %%zmm0, %%zmm0\n"
+        "    vaddps %%zmm18, %%zmm12, %%zmm5\n"
+        "    vsubps %%zmm4, %%zmm13, %%zmm9\n"
+        "    vsubps %%zmm18, %%zmm12, %%zmm12\n"
+        "    vaddps %%zmm4, %%zmm13, %%zmm4\n"
+        "    vaddps %%zmm7, %%zmm3, %%zmm13\n"
+        "    vaddps %%zmm6, %%zmm2, %%zmm17\n"
+        "    vsubps %%zmm7, %%zmm3, %%zmm3\n"
+        "    vsubps %%zmm6, %%zmm2, %%zmm2\n"
+        "    vaddps %%zmm9, %%zmm5, %%zmm6\n"
+        "    vsubps %%zmm5, %%zmm9, %%zmm5\n"
+        "    vaddps %%zmm4, %%zmm12, %%zmm7\n"
+        "    vsubps %%zmm12, %%zmm4, %%zmm4\n"
+        "    vaddps %%zmm13, %%zmm8, %%zmm9\n"
+        "    vaddps %%zmm17, %%zmm16, %%zmm12\n"
+        "    vaddps %%zmm2, %%zmm10, %%zmm18\n"
+        "    vsubps %%zmm3, %%zmm11, %%zmm19\n"
+        "    vsubps %%zmm13, %%zmm8, %%zmm8\n"
+        "    vsubps %%zmm17, %%zmm16, %%zmm13\n"
+        "    vsubps %%zmm2, %%zmm10, %%zmm2\n"
+        "    vmulps (%[consts])%{1to16%}, %%zmm6, %%zmm6\n"
+        "    vmulps (%[consts])%{1to16%}, %%zmm5, %%zmm5\n"
+        "    vaddps %%zmm3, %%zmm11, %%zmm3\n"
+        "    vmulps (%[consts])%{1to16%}, %%zmm7, %%zmm7\n"
+        "    vmulps (%[consts])%{1to16%}, %%zmm4, %%zmm4\n"
+        "    vmovups %%zmm9, (%[dst])\n"
+        "    vmovups %%zmm12, 64(%[dst])\n"
+        "    lea (%[dst],%[out_stride],1), %[dst]\n"
+        "    vaddps %%zmm6, %%zmm14, %%zmm9\n"
+        "    vaddps %%zmm5, %%zmm15, %%zmm10\n"
+        "    vmovups %%zmm18, (%[dst])\n"
+        "    vmovups %%zmm19, 64(%[dst])\n"
+        "    vsubps %%zmm6, %%zmm14, %%zmm6\n"
+        "    vaddps %%zmm4, %%zmm1, %%zmm11\n"
+        "    vsubps %%zmm7, %%zmm0, %%zmm12\n"
+        "    lea (%[dst],%[out_stride],1), %[dst]\n"
+        "    vsubps %%zmm5, %%zmm15, %%zmm5\n"
+        "    vmovups %%zmm8, (%[dst])\n"
+        "    vmovups %%zmm13, 64(%[dst])\n"
+        "    vsubps %%zmm4, %%zmm1, %%zmm1\n"
+        "    vaddps %%zmm7, %%zmm0, %%zmm0\n"
+        "    lea (%[dst],%[out_stride],1), %[dst]\n"
+        "    vmovups %%zmm2, (%[dst])\n"
+        "    vmovups %%zmm3, 64(%[dst])\n"
+        "    lea (%[dst],%[out_stride],1), %[dst]\n"
+        "    vmovups %%zmm9, (%[dst])\n"
+        "    vmovups %%zmm10, 64(%[dst])\n"
+        "    lea (%[dst],%[out_stride],1), %[dst]\n"
+        "    vmovups %%zmm11, (%[dst])\n"
+        "    vmovups %%zmm12, 64(%[dst])\n"
+        "    lea (%[dst],%[out_stride],1), %[dst]\n"
+        "    vmovups %%zmm6, (%[dst])\n"
+        "    vmovups %%zmm5, 64(%[dst])\n"
+        "    lea (%[dst],%[out_stride],1), %[dst]\n"
+        "    vmovups %%zmm1, (%[dst])\n"
+        "    vmovups %%zmm0, 64(%[dst])\n"
+        "    sub $1, %[count]\n"
+        "    jnz 1b\n"
+        "    vzeroupper\n"
+        : [in] "+r"(in), [out] "+r"(out), [table] "+r"(table), [count] "+r"(count), [in_stride] "+r"(in_stride), [out_stride] "+r"(out_stride), [src] "=&r"(src), [dst] "=&r"(dst), [a] "=&r"(a), [b] "=&r"(b), [consts] "+r"(consts)
+        :
+        : "xmm0", "xmm1", "xmm2", "xmm3", "xmm4", "xmm5", "xmm6", "xmm7", "xmm8", "xmm9", "xmm10", "xmm11", "xmm12", "xmm13", "xmm14", "xmm15", "xmm16", "xmm17", "xmm18", "xmm19", "cc", "memory");
+}
+
+/* Last pass, in place: reads split vectors and writes the interleaved result. Butterfly
+ * j < count uses the vectors at data + r*stride + 128*j. Index bits 1 and 0 are moved from the lanes
+ * to the registers and transformed. The table holds per butterfly, for l = 1..3, the real and the
+ * imaginary parts of the 16 twiddles of the vector with index bits (1, 0) = l. */
+__attribute__((target("avx512f"))) static void onefft_avx512_lb(float *data, const float *tw, size_t stride, size_t count, size_t regions) {
+    (void)regions;
+    float *third;
+    __asm__ volatile(
+        "    lea (%[data],%[stride],2), %[third]\n"
+        "    lea (%[third],%[stride],1), %[third]\n"
+        "1:\n"
+        "    vmovups (%[data]), %%zmm0\n"
+        "    vmovups 64(%[data]), %%zmm1\n"
+        "    vmovups (%[data],%[stride],1), %%zmm2\n"
+        "    vmovups 64(%[data],%[stride],1), %%zmm3\n"
+        "    vmovups (%[data],%[stride],2), %%zmm4\n"
+        "    vmovups 64(%[data],%[stride],2), %%zmm5\n"
+        "    vmovups (%[third]), %%zmm6\n"
+        "    vmovups 64(%[third]), %%zmm7\n"
+        "    vshuff32x4 $136, %%zmm2, %%zmm0, %%zmm8\n"
+        "    vshuff32x4 $221, %%zmm2, %%zmm0, %%zmm0\n"
+        "    vshuff32x4 $136, %%zmm3, %%zmm1, %%zmm2\n"
+        "    vshuff32x4 $221, %%zmm3, %%zmm1, %%zmm1\n"
+        "    vshuff32x4 $136, %%zmm6, %%zmm4, %%zmm3\n"
+        "    vshuff32x4 $221, %%zmm6, %%zmm4, %%zmm4\n"
+        "    vshuff32x4 $136, %%zmm7, %%zmm5, %%zmm6\n"
+        "    vshuff32x4 $221, %%zmm7, %%zmm5, %%zmm5\n"
+        "    vunpckhps %%zmm3, %%zmm8, %%zmm7\n"
+        "    vunpckhps %%zmm6, %%zmm2, %%zmm9\n"
+        "    vunpcklps %%zmm4, %%zmm0, %%zmm10\n"
+        "    vunpckhps %%zmm4, %%zmm0, %%zmm0\n"
+        "    vunpcklps %%zmm5, %%zmm1, %%zmm4\n"
+        "    vunpckhps %%zmm5, %%zmm1, %%zmm1\n"
+        "    vmulps (%[tw]), %%zmm7, %%zmm5\n"
+        "    vmulps (%[tw]), %%zmm9, %%zmm11\n"
+        "    vmulps 128(%[tw]), %%zmm10, %%zmm12\n"
+        "    vmulps 128(%[tw]), %%zmm4, %%zmm13\n"
+        "    vmulps 256(%[tw]), %%zmm0, %%zmm14\n"
+        "    vmulps 256(%[tw]), %%zmm1, %%zmm15\n"
+        "    vunpcklps %%zmm3, %%zmm8, %%zmm3\n"
+        "    vunpcklps %%zmm6, %%zmm2, %%zmm2\n"
+        "    vfnmadd231ps 64(%[tw]), %%zmm9, %%zmm5\n"
+        "    vfmadd231ps 64(%[tw]), %%zmm7, %%zmm11\n"
+        "    vfnmadd231ps 192(%[tw]), %%zmm4, %%zmm12\n"
+        "    vfmadd231ps 192(%[tw]), %%zmm10, %%zmm13\n"
+        "    vfnmadd231ps 320(%[tw]), %%zmm1, %%zmm14\n"
+        "    vfmadd231ps 320(%[tw]), %%zmm0, %%zmm15\n"
+        "    lea 384(%[tw]), %[tw]\n"
+        "    vaddps %%zmm12, %%zmm3, %%zmm0\n"
+        "    vaddps %%zmm13, %%zmm2, %%zmm1\n"
+        "    vsubps %%zmm12, %%zmm3, %%zmm3\n"
+        "    vsubps %%zmm13, %%zmm2, %%zmm2\n"
+        "    vaddps %%zmm14, %%zmm5, %%zmm4\n"
+        "    vaddps %%zmm15, %%zmm11, %%zmm6\n"
+        "    vsubps %%zmm14, %%zmm5, %%zmm5\n"
+        "    vsubps %%zmm15, %%zmm11, %%zmm7\n"
+        "    vaddps %%zmm4, %%zmm0, %%zmm8\n"
+        "    vaddps %%zmm6, %%zmm1, %%zmm9\n"
+        "    vsubps %%zmm4, %%zmm0, %%zmm0\n"
+        "    vsubps %%zmm6, %%zmm1, %%zmm1\n"
+        "    vaddps %%zmm7, %%zmm3, %%zmm4\n"
+        "    vsubps %%zmm5, %%zmm2, %%zmm6\n"
+        "    vsubps %%zmm7, %%zmm3, %%zmm3\n"
+        "    vaddps %%zmm5, %%zmm2, %%zmm2\n"
+        "    vunpcklps %%zmm9, %%zmm8, %%zmm5\n"
+        "    vunpckhps %%zmm9, %%zmm8, %%zmm7\n"
+        "    vunpcklps %%zmm6, %%zmm4, %%zmm8\n"
+        "    vunpckhps %%zmm6, %%zmm4, %%zmm4\n"
+        "    vunpcklps %%zmm1, %%zmm0, %%zmm6\n"
+        "    vmovups %%zmm5, (%[data])\n"
+        "    vmovups %%zmm7, 64(%[data])\n"
+        "    vunpckhps %%zmm1, %%zmm0, %%zmm0\n"
+        "    vunpcklps %%zmm2, %%zmm3, %%zmm1\n"
+        "    vunpckhps %%zmm2, %%zmm3, %%zmm2\n"
+        "    vmovups %%zmm8, (%[data],%[stride],1)\n"
+        "    vmovups %%zmm4, 64(%[data],%[stride],1)\n"
+        "    vmovups %%zmm6, (%[data],%[stride],2)\n"
+        "    vmovups %%zmm0, 64(%[data],%[stride],2)\n"
+        "    vmovups %%zmm1, (%[third])\n"
+        "    vmovups %%zmm2, 64(%[third])\n"
+        "    lea 128(%[data]), %[data]\n"
+        "    lea 128(%[third]), %[third]\n"
+        "    sub $1, %[count]\n"
+        "    jnz 1b\n"
+        "    vzeroupper\n"
+        : [data] "+r"(data), [tw] "+r"(tw), [stride] "+r"(stride), [count] "+r"(count), [third] "=&r"(third)
+        :
+        : "xmm0", "xmm1", "xmm2", "xmm3", "xmm4", "xmm5", "xmm6", "xmm7", "xmm8", "xmm9", "xmm10", "xmm11", "xmm12", "xmm13", "xmm14", "xmm15", "cc", "memory");
+}
+
+static const float onefft_avx512_f8i_consts[4] ONEFFT_ALIGNED(64) = {
+    0x1.6a09e667f3bcdp-1f, 0x1.6a09e667f3bcdp-1f, 0x1.6a09e667f3bcdp-1f, 0x1.6a09e667f3bcdp-1f,
+};
+/* First pass, radix 8. For each of the `count` entries (a, b) of `table`: reads 8 interleaved
+ * vectors from in + 8*a + u*in_stride, transforms across them and writes output q as a split
+ * vector to out + 8*b + r*out_stride, where r is q with its bits reversed (and the lower two exchanged). */
+__attribute__((target("avx512f"))) static void onefft_avx512_f8i(const float *in, float *out, const uint32_t *table, size_t count, size_t in_stride, size_t out_stride) {
+    const float *src;
+    float *dst;
+    size_t a;
+    size_t b;
+    const float *consts = onefft_avx512_f8i_consts;
+    __asm__ volatile(
+        "1:\n"
+        "    movl (%[table]), %k[a]\n"
+        "    movl 4(%[table]), %k[b]\n"
+        "    lea 8(%[table]), %[table]\n"
+        "    lea (%[in],%[a],8), %[src]\n"
+        "    lea (%[out],%[b],8), %[dst]\n"
+        "    vmovups (%[src]), %%zmm0\n"
+        "    vshufps $136, 64(%[src]), %%zmm0, %%zmm1\n"
+        "    vshufps $221, 64(%[src]), %%zmm0, %%zmm0\n"
+        "    lea (%[src],%[in_stride],1), %[src]\n"
+        "    vmovups (%[src]), %%zmm2\n"
+        "    vshufps $136, 64(%[src]), %%zmm2, %%zmm3\n"
+        "    vshufps $221, 64(%[src]), %%zmm2, %%zmm2\n"
+        "    lea (%[src],%[in_stride],1), %[src]\n"
+        "    vmovups (%[src]), %%zmm4\n"
+        "    vshufps $136, 64(%[src]), %%zmm4, %%zmm5\n"
+        "    vshufps $221, 64(%[src]), %%zmm4, %%zmm4\n"
+        "    lea (%[src],%[in_stride],1), %[src]\n"
+        "    vmovups (%[src]), %%zmm6\n"
+        "    vshufps $136, 64(%[src]), %%zmm6, %%zmm7\n"
+        "    vshufps $221, 64(%[src]), %%zmm6, %%zmm6\n"
+        "    lea (%[src],%[in_stride],1), %[src]\n"
+        "    vmovups (%[src]), %%zmm8\n"
+        "    vshufps $136, 64(%[src]), %%zmm8, %%zmm9\n"
+        "    vshufps $221, 64(%[src]), %%zmm8, %%zmm8\n"
+        "    lea (%[src],%[in_stride],1), %[src]\n"
+        "    vaddps %%zmm8, %%zmm0, %%zmm10\n"
+        "    vaddps %%zmm9, %%zmm1, %%zmm11\n"
+        "    vsubps %%zmm8, %%zmm0, %%zmm0\n"
+        "    vmovups (%[src]), %%zmm8\n"
+        "    vsubps %%zmm9, %%zmm1, %%zmm1\n"
+        "    vshufps $136, 64(%[src]), %%zmm8, %%zmm9\n"
+        "    vshufps $221, 64(%[src]), %%zmm8, %%zmm8\n"
+        "    lea (%[src],%[in_stride],1), %[src]\n"
+        "    vsubps %%zmm8, %%zmm2, %%zmm12\n"
+        "    vsubps %%zmm9, %%zmm3, %%zmm13\n"
+        "    vaddps %%zmm8, %%zmm2, %%zmm2\n"
+        "    vmovups (%[src]), %%zmm8\n"
+        "    vaddps %%zmm9, %%zmm3, %%zmm3\n"
+        "    vshufps $136, 64(%[src]), %%zmm8, %%zmm9\n"
+        "    vshufps $221, 64(%[src]), %%zmm8, %%zmm8\n"
+        "    lea (%[src],%[in_stride],1), %[src]\n"
+        "    vaddps %%zmm8, %%zmm4, %%zmm14\n"
+        "    vaddps %%zmm9, %%zmm5, %%zmm15\n"
+        "    vsubps %%zmm8, %%zmm4, %%zmm4\n"
+        "    vmovups (%[src]), %%zmm8\n"
+        "    vsubps %%zmm9, %%zmm5, %%zmm5\n"
+        "    vaddps %%zmm14, %%zmm10, %%zmm9\n"
+        "    vaddps %%zmm15, %%zmm11, %%zmm16\n"
+        "    vsubps %%zmm14, %%zmm10, %%zmm10\n"
+        "    vsubps %%zmm15, %%zmm11, %%zmm11\n"
+        "    vaddps %%zmm5, %%zmm0, %%zmm14\n"
+        "    vsubps %%zmm4, %%zmm1, %%zmm15\n"
+        "    vshufps $136, 64(%[src]), %%zmm8, %%zmm17\n"
+        "    vshufps $221, 64(%[src]), %%zmm8, %%zmm8\n"
+        "    vsubps %%zmm5, %%zmm0, %%zmm0\n"
+        "    vsubps %%zmm8, %%zmm6, %%zmm5\n"
+        "    vsubps %%zmm17, %%zmm7, %%zmm18\n"
+        "    vaddps %%zmm8, %%zmm6, %%zmm6\n"
+        "    vaddps %%zmm17, %%zmm7, %%zmm7\n"
+        "    vaddps %%zmm4, %%zmm1, %%zmm1\n"
+        "    vaddps %%zmm18, %%zmm12, %%zmm4\n"
+        "    vsubps %%zmm5, %%zmm13, %%zmm8\n"
+        "    vsubps %%zmm18, %%zmm12, %%zmm12\n"
+        "    vaddps %%zmm5, %%zmm13, %%zmm5\n"
+        "    vaddps %%zmm6, %%zmm2, %%zmm13\n"
+        "    vaddps %%zmm7, %%zmm3, %%zmm17\n"
+        "    vsubps %%zmm6, %%zmm2, %%zmm2\n"
+        "    vsubps %%zmm7, %%zmm3, %%zmm3\n"
+        "    vaddps %%zmm8, %%zmm4, %%zmm6\n"
+        "    vsubps %%zmm4, %%zmm8, %%zmm4\n"
+        "    vaddps %%zmm5, %%zmm12, %%zmm7\n"
+        "    vsubps %%zmm12, %%zmm5, %%zmm5\n"
+        "    vaddps %%zmm13, %%zmm9, %%zmm8\n"
+        "    vaddps %%zmm17, %%zmm16, %%zmm12\n"
+        "    vaddps %%zmm3, %%zmm10, %%zmm18\n"
+        "    vsubps %%zmm2, %%zmm11, %%zmm19\n"
+        "    vsubps %%zmm13, %%zmm9, %%zmm9\n"
+        "    vsubps %%zmm17, %%zmm16, %%zmm13\n"
+        "    vsubps %%zmm3, %%zmm10, %%zmm3\n"
+        "    vmulps (%[consts])%{1to16%}, %%zmm6, %%zmm6\n"
+        "    vmulps (%[consts])%{1to16%}, %%zmm4, %%zmm4\n"
+        "    vaddps %%zmm2, %%zmm11, %%zmm2\n"
+        "    vmulps (%[consts])%{1to16%}, %%zmm7, %%zmm7\n"
+        "    vmulps (%[consts])%{1to16%}, %%zmm5, %%zmm5\n"
+        "    vmovups %%zmm8, (%[dst])\n"
+        "    vmovups %%zmm12, 64(%[dst])\n"
+        "    lea (%[dst],%[out_stride],1), %[dst]\n"
+        "    vaddps %%zmm6, %%zmm14, %%zmm8\n"
+        "    vaddps %%zmm4, %%zmm15, %%zmm10\n"
+        "    vmovups %%zmm18, (%[dst])\n"
+        "    vmovups %%zmm19, 64(%[dst])\n"
+        "    vsubps %%zmm6, %%zmm14, %%zmm6\n"
+        "    vaddps %%zmm5, %%zmm0, %%zmm11\n"
+        "    vsubps %%zmm7, %%zmm1, %%zmm12\n"
+        "    lea (%[dst],%[out_stride],1), %[dst]\n"
+        "    vsubps %%zmm4, %%zmm15, %%zmm4\n"
+        "    vmovups %%zmm9, (%[dst])\n"
+        "    vmovups %%zmm13, 64(%[dst])\n"
+        "    vsubps %%zmm5, %%zmm0, %%zmm0\n"
+        "    vaddps %%zmm7, %%zmm1, %%zmm1\n"
+        "    lea (%[dst],%[out_stride],1), %[dst]\n"
+        "    vmovups %%zmm3, (%[dst])\n"
+        "    vmovups %%zmm2, 64(%[dst])\n"
+        "    lea (%[dst],%[out_stride],1), %[dst]\n"
+        "    vmovups %%zmm8, (%[dst])\n"
+        "    vmovups %%zmm10, 64(%[dst])\n"
+        "    lea (%[dst],%[out_stride],1), %[dst]\n"
+        "    vmovups %%zmm11, (%[dst])\n"
+        "    vmovups %%zmm12, 64(%[dst])\n"
+        "    lea (%[dst],%[out_stride],1), %[dst]\n"
+        "    vmovups %%zmm6, (%[dst])\n"
+        "    vmovups %%zmm4, 64(%[dst])\n"
+        "    lea (%[dst],%[out_stride],1), %[dst]\n"
+        "    vmovups %%zmm0, (%[dst])\n"
+        "    vmovups %%zmm1, 64(%[dst])\n"
+        "    sub $1, %[count]\n"
+        "    jnz 1b\n"
+        "    vzeroupper\n"
+        : [in] "+r"(in), [out] "+r"(out), [table] "+r"(table), [count] "+r"(count), [in_stride] "+r"(in_stride), [out_stride] "+r"(out_stride), [src] "=&r"(src), [dst] "=&r"(dst), [a] "=&r"(a), [b] "=&r"(b), [consts] "+r"(consts)
+        :
+        : "xmm0", "xmm1", "xmm2", "xmm3", "xmm4", "xmm5", "xmm6", "xmm7", "xmm8", "xmm9", "xmm10", "xmm11", "xmm12", "xmm13", "xmm14", "xmm15", "xmm16", "xmm17", "xmm18", "xmm19", "cc", "memory");
+}
+
+/* Last pass, in place: reads split vectors and writes the interleaved result. Butterfly
+ * j < count uses the vectors at data + r*stride + 128*j. Index bits 1 and 0 are moved from the lanes
+ * to the registers and transformed. The table holds per butterfly, for l = 1..3, the real and the
+ * imaginary parts of the 16 twiddles of the vector with index bits (1, 0) = l. */
+__attribute__((target("avx512f"))) static void onefft_avx512_lbi(float *data, const float *tw, size_t stride, size_t count, size_t regions) {
+    (void)regions;
+    float *third;
+    __asm__ volatile(
+        "    lea (%[data],%[stride],2), %[third]\n"
+        "    lea (%[third],%[stride],1), %[third]\n"
+        "1:\n"
+        "    vmovups (%[data]), %%zmm0\n"
+        "    vmovups 64(%[data]), %%zmm1\n"
+        "    vmovups (%[data],%[stride],1), %%zmm2\n"
+        "    vmovups 64(%[data],%[stride],1), %%zmm3\n"
+        "    vmovups (%[data],%[stride],2), %%zmm4\n"
+        "    vmovups 64(%[data],%[stride],2), %%zmm5\n"
+        "    vmovups (%[third]), %%zmm6\n"
+        "    vmovups 64(%[third]), %%zmm7\n"
+        "    vshuff32x4 $136, %%zmm2, %%zmm0, %%zmm8\n"
+        "    vshuff32x4 $221, %%zmm2, %%zmm0, %%zmm0\n"
+        "    vshuff32x4 $136, %%zmm3, %%zmm1, %%zmm2\n"
+        "    vshuff32x4 $221, %%zmm3, %%zmm1, %%zmm1\n"
+        "    vshuff32x4 $136, %%zmm6, %%zmm4, %%zmm3\n"
+        "    vshuff32x4 $221, %%zmm6, %%zmm4, %%zmm4\n"
+        "    vshuff32x4 $136, %%zmm7, %%zmm5, %%zmm6\n"
+        "    vshuff32x4 $221, %%zmm7, %%zmm5, %%zmm5\n"
+        "    vunpckhps %%zmm3, %%zmm8, %%zmm7\n"
+        "    vunpckhps %%zmm6, %%zmm2, %%zmm9\n"
+        "    vunpcklps %%zmm4, %%zmm0, %%zmm10\n"
+        "    vunpckhps %%zmm4, %%zmm0, %%zmm0\n"
+        "    vunpcklps %%zmm5, %%zmm1, %%zmm4\n"
+        "    vunpckhps %%zmm5, %%zmm1, %%zmm1\n"
+        "    vmulps (%[tw]), %%zmm7, %%zmm5\n"
+        "    vmulps (%[tw]), %%zmm9, %%zmm11\n"
+        "    vmulps 128(%[tw]), %%zmm10, %%zmm12\n"
+        "    vmulps 128(%[tw]), %%zmm4, %%zmm13\n"
+        "    vmulps 256(%[tw]), %%zmm0, %%zmm14\n"
+        "    vmulps 256(%[tw]), %%zmm1, %%zmm15\n"
+        "    vunpcklps %%zmm3, %%zmm8, %%zmm3\n"
+        "    vunpcklps %%zmm6, %%zmm2, %%zmm2\n"
+        "    vfnmadd231ps 64(%[tw]), %%zmm9, %%zmm5\n"
+        "    vfmadd231ps 64(%[tw]), %%zmm7, %%zmm11\n"
+        "    vfnmadd231ps 192(%[tw]), %%zmm4, %%zmm12\n"
+        "    vfmadd231ps 192(%[tw]), %%zmm10, %%zmm13\n"
+        "    vfnmadd231ps 320(%[tw]), %%zmm1, %%zmm14\n"
+        "    vfmadd231ps 320(%[tw]), %%zmm0, %%zmm15\n"
+        "    lea 384(%[tw]), %[tw]\n"
+        "    vaddps %%zmm12, %%zmm3, %%zmm0\n"
+        "    vaddps %%zmm13, %%zmm2, %%zmm1\n"
+        "    vsubps %%zmm12, %%zmm3, %%zmm3\n"
+        "    vsubps %%zmm13, %%zmm2, %%zmm2\n"
+        "    vaddps %%zmm14, %%zmm5, %%zmm4\n"
+        "    vaddps %%zmm15, %%zmm11, %%zmm6\n"
+        "    vsubps %%zmm14, %%zmm5, %%zmm5\n"
+        "    vsubps %%zmm15, %%zmm11, %%zmm7\n"
+        "    vaddps %%zmm4, %%zmm0, %%zmm8\n"
+        "    vaddps %%zmm6, %%zmm1, %%zmm9\n"
+        "    vsubps %%zmm4, %%zmm0, %%zmm0\n"
+        "    vsubps %%zmm6, %%zmm1, %%zmm1\n"
+        "    vaddps %%zmm7, %%zmm3, %%zmm4\n"
+        "    vsubps %%zmm5, %%zmm2, %%zmm6\n"
+        "    vsubps %%zmm7, %%zmm3, %%zmm3\n"
+        "    vaddps %%zmm5, %%zmm2, %%zmm2\n"
+        "    vunpcklps %%zmm8, %%zmm9, %%zmm5\n"
+        "    vunpckhps %%zmm8, %%zmm9, %%zmm7\n"
+        "    vunpcklps %%zmm4, %%zmm6, %%zmm8\n"
+        "    vunpckhps %%zmm4, %%zmm6, %%zmm4\n"
+        "    vunpcklps %%zmm0, %%zmm1, %%zmm6\n"
+        "    vmovups %%zmm5, (%[data])\n"
+        "    vmovups %%zmm7, 64(%[data])\n"
+        "    vunpckhps %%zmm0, %%zmm1, %%zmm0\n"
+        "    vunpcklps %%zmm3, %%zmm2, %%zmm1\n"
+        "    vunpckhps %%zmm3, %%zmm2, %%zmm2\n"
+        "    vmovups %%zmm8, (%[data],%[stride],1)\n"
+        "    vmovups %%zmm4, 64(%[data],%[stride],1)\n"
+        "    vmovups %%zmm6, (%[data],%[stride],2)\n"
+        "    vmovups %%zmm0, 64(%[data],%[stride],2)\n"
+        "    vmovups %%zmm1, (%[third])\n"
+        "    vmovups %%zmm2, 64(%[third])\n"
+        "    lea 128(%[data]), %[data]\n"
+        "    lea 128(%[third]), %[third]\n"
+        "    sub $1, %[count]\n"
+        "    jnz 1b\n"
+        "    vzeroupper\n"
+        : [data] "+r"(data), [tw] "+r"(tw), [stride] "+r"(stride), [count] "+r"(count), [third] "=&r"(third)
+        :
+        : "xmm0", "xmm1", "xmm2", "xmm3", "xmm4", "xmm5", "xmm6", "xmm7", "xmm8", "xmm9", "xmm10", "xmm11", "xmm12", "xmm13", "xmm14", "xmm15", "cc", "memory");
+}
+
+/* Middle pass, radix 4, in place on split vectors. `data` holds `regions` regions of `blocks`
+ * blocks. Input i of butterfly j of a block is the vector at (i/2)*args.s_high + (i%2)*args.s_low
+ * + j*V (V = bytes per vector), j < args.inner; see passes.py for how the blocks and regions follow
+ * each other. Butterfly j multiplies input i by w_j^i and transforms across the vectors; output q
+ * goes to (q%2)*s_high + (q/2)*s_low. The table `tw` holds per butterfly the real parts of w^1..w^3
+ * and one unused float, then the imaginary parts. */
+__attribute__((target("avx512f"))) static void onefft_avx512_c4(float *data, const float *tw, const size_t *args, size_t blocks, size_t regions) {
+    float *upper;
+    size_t s_low;
+    const float *twp;
+    size_t j;
+    size_t b;
+    size_t scratch;
+    __asm__ volatile(
+        "    mov 0(%[args]), %[s_low]\n"
+        "    lea (%[data],%[s_low],1), %[upper]\n"
+        "    mov 8(%[args]), %[s_low]\n"
+        "1:\n"
+        "    mov %[blocks], %[b]\n"
+        "2:\n"
+        "    mov %[tw], %[twp]\n"
+        "    mov 16(%[args]), %[j]\n"
+        "3:\n"
+        "    vmovups (%[data],%[s_low],1), %%zmm0\n"
+        "    vmovups 64(%[data],%[s_low],1), %%zmm1\n"
+        "    vmovups (%[upper]), %%zmm2\n"
+        "    vmovups 64(%[upper]), %%zmm3\n"
+        "    vmovups (%[upper],%[s_low],1), %%zmm4\n"
+        "    vmovups 64(%[upper],%[s_low],1), %%zmm5\n"
+        "    vmovups (%[data]), %%zmm6\n"
+        "    vmovups 64(%[data]), %%zmm7\n"
+        "    vmulps (%[twp])%{1to16%}, %%zmm0, %%zmm8\n"
+        "    vmulps (%[twp])%{1to16%}, %%zmm1, %%zmm9\n"
+        "    vmulps 4(%[twp])%{1to16%}, %%zmm2, %%zmm10\n"
+        "    vmulps 4(%[twp])%{1to16%}, %%zmm3, %%zmm11\n"
+        "    vmulps 8(%[twp])%{1to16%}, %%zmm4, %%zmm12\n"
+        "    vmulps 8(%[twp])%{1to16%}, %%zmm5, %%zmm13\n"
+        "    vfnmadd231ps 16(%[twp])%{1to16%}, %%zmm1, %%zmm8\n"
+        "    vfmadd231ps 16(%[twp])%{1to16%}, %%zmm0, %%zmm9\n"
+        "    vfnmadd231ps 20(%[twp])%{1to16%}, %%zmm3, %%zmm10\n"
+        "    vfmadd231ps 20(%[twp])%{1to16%}, %%zmm2, %%zmm11\n"
+        "    vfnmadd231ps 24(%[twp])%{1to16%}, %%zmm5, %%zmm12\n"
+        "    vfmadd231ps 24(%[twp])%{1to16%}, %%zmm4, %%zmm13\n"
+        "    lea 32(%[twp]), %[twp]\n"
+        "    vaddps %%zmm10, %%zmm6, %%zmm0\n"
+        "    vsubps %%zmm10, %%zmm6, %%zmm1\n"
+        "    vaddps %%zmm11, %%zmm7, %%zmm2\n"
+        "    vsubps %%zmm11, %%zmm7, %%zmm3\n"
+        "    vaddps %%zmm12, %%zmm8, %%zmm4\n"
+        "    vaddps %%zmm13, %%zmm9, %%zmm5\n"
+        "    vsubps %%zmm12, %%zmm8, %%zmm6\n"
+        "    vsubps %%zmm13, %%zmm9, %%zmm7\n"
+        "    vaddps %%zmm4, %%zmm0, %%zmm8\n"
+        "    vsubps %%zmm4, %%zmm0, %%zmm0\n"
+        "    vaddps %%zmm5, %%zmm2, %%zmm4\n"
+        "    vsubps %%zmm5, %%zmm2, %%zmm2\n"
+        "    vaddps %%zmm7, %%zmm1, %%zmm5\n"
+        "    vsubps %%zmm6, %%zmm3, %%zmm9\n"
+        "    vsubps %%zmm7, %%zmm1, %%zmm1\n"
+        "    vaddps %%zmm6, %%zmm3, %%zmm3\n"
+        "    vmovups %%zmm8, (%[data])\n"
+        "    vmovups %%zmm0, (%[data],%[s_low],1)\n"
+        "    vmovups %%zmm4, 64(%[data])\n"
+        "    vmovups %%zmm5, (%[upper])\n"
+        "    vmovups %%zmm2, 64(%[data],%[s_low],1)\n"
+        "    vmovups %%zmm9, 64(%[upper])\n"
+        "    vmovups %%zmm1, (%[upper],%[s_low],1)\n"
+        "    vmovups %%zmm3, 64(%[upper],%[s_low],1)\n"
+        "    lea 128(%[data]), %[data]\n"
+        "    lea 128(%[upper]), %[upper]\n"
+        "    sub $1, %[j]\n"
+        "    jnz 3b\n"
+        "    mov 24(%[args]), %[scratch]\n"
+        "    lea (%[data],%[scratch],1), %[data]\n"
+        "    lea (%[upper],%[scratch],1), %[upper]\n"
+        "    sub $1, %[b]\n"
+        "    jnz 2b\n"
+        "    mov 32(%[args]), %[scratch]\n"
+        "    lea (%[data],%[scratch],1), %[data]\n"
+        "    lea (%[upper],%[scratch],1), %[upper]\n"
+        "    mov 40(%[args]), %[scratch]\n"
+        "    lea (%[tw],%[scratch],1), %[tw]\n"
+        "    sub $1, %[regions]\n"
+        "    jnz 1b\n"
+        "    vzeroupper\n"
+        : [data] "+r"(data), [tw] "+r"(tw), [args] "+r"(args), [blocks] "+r"(blocks), [regions] "+r"(regions), [upper] "=&r"(upper), [s_low] "=&r"(s_low), [twp] "=&r"(twp), [j] "=&r"(j), [b] "=&r"(b), [scratch] "=&r"(scratch)
+        :
+        : "xmm0", "xmm1", "xmm2", "xmm3", "xmm4", "xmm5", "xmm6", "xmm7", "xmm8", "xmm9", "xmm10", "xmm11", "xmm12", "xmm13", "cc", "memory");
+}
+
+/* Pass before the last, in place on split vectors. Butterfly j < count of a region uses the
+ * vectors at data + u*stride + 128*j, u < 8; the `regions` regions follow each other. Index bit 4 selects u%2 and is transformed first. Index bits 3
+ * and 2 are moved from the lanes to the registers and transformed. See the table builder in
+ * onefft.c for the twiddle layout. */
+__attribute__((target("avx512f"))) static void onefft_avx512_la3(float *data, const float *tw, size_t stride, size_t count, size_t regions) {
+    float *third;
+    size_t region_skip;
+    float *fifth;
+    size_t j;
+    __asm__ volatile(
+        "    mov %[stride], %[region_skip]\n"
+        "    lea (%[data],%[stride],2), %[third]\n"
+        "    lea (%[data],%[stride],4), %[fifth]\n"
+        "    shl $3, %[region_skip]\n"
+        "    lea (%[third],%[stride],1), %[third]\n"
+        "    lea (%[fifth],%[stride],1), %[fifth]\n"
+        "    sub %[stride], %[region_skip]\n"
+        "1:\n"
+        "    mov %[count], %[j]\n"
+        "2:\n"
+        "    vmovups (%[data],%[stride],1), %%zmm0\n"
+        "    vmovups 64(%[data],%[stride],1), %%zmm1\n"
+        "    vmovups (%[third]), %%zmm2\n"
+        "    vmovups 64(%[third]), %%zmm3\n"
+        "    vmovups (%[fifth]), %%zmm4\n"
+        "    vmovups 64(%[fifth]), %%zmm5\n"
+        "    vmovups (%[third],%[stride],4), %%zmm6\n"
+        "    vmovups 64(%[third],%[stride],4), %%zmm7\n"
+        "    vmovups (%[data]), %%zmm8\n"
+        "    vmovups 64(%[data]), %%zmm9\n"
+        "    vmovups (%[data],%[stride],2), %%zmm10\n"
+        "    vmovups 64(%[data],%[stride],2), %%zmm11\n"
+        "    vmovups (%[data],%[stride],4), %%zmm12\n"
+        "    vmovups 64(%[data],%[stride],4), %%zmm13\n"
+        "    vmovups (%[fifth],%[stride],1), %%zmm14\n"
+        "    vmovups 64(%[fifth],%[stride],1), %%zmm15\n"
+        "    vmulps (%[tw])%{1to16%}, %%zmm0, %%zmm16\n"
+        "    vmulps (%[tw])%{1to16%}, %%zmm1, %%zmm17\n"
+        "    vmulps 4(%[tw])%{1to16%}, %%zmm2, %%zmm18\n"
+        "    vmulps 4(%[tw])%{1to16%}, %%zmm3, %%zmm19\n"
+        "    vmulps 8(%[tw])%{1to16%}, %%zmm4, %%zmm20\n"
+        "    vmulps 8(%[tw])%{1to16%}, %%zmm5, %%zmm21\n"
+        "    vmulps 12(%[tw])%{1to16%}, %%zmm6, %%zmm22\n"
+        "    vmulps 12(%[tw])%{1to16%}, %%zmm7, %%zmm23\n"
+        "    vfnmadd231ps 16(%[tw])%{1to16%}, %%zmm1, %%zmm16\n"
+        "    vfmadd231ps 16(%[tw])%{1to16%}, %%zmm0, %%zmm17\n"
+        "    vfnmadd231ps 20(%[tw])%{1to16%}, %%zmm3, %%zmm18\n"
+        "    vfmadd231ps 20(%[tw])%{1to16%}, %%zmm2, %%zmm19\n"
+        "    vfnmadd231ps 24(%[tw])%{1to16%}, %%zmm5, %%zmm20\n"
+        "    vfmadd231ps 24(%[tw])%{1to16%}, %%zmm4, %%zmm21\n"
+        "    vfnmadd231ps 28(%[tw])%{1to16%}, %%zmm7, %%zmm22\n"
+        "    vfmadd231ps 28(%[tw])%{1to16%}, %%zmm6, %%zmm23\n"
+        "    vaddps %%zmm16, %%zmm8, %%zmm0\n"
+        "    vaddps %%zmm17, %%zmm9, %%zmm1\n"
+        "    vsubps %%zmm16, %%zmm8, %%zmm2\n"
+        "    vsubps %%zmm17, %%zmm9, %%zmm3\n"
+        "    vaddps %%zmm18, %%zmm10, %%zmm4\n"
+        "    vaddps %%zmm19, %%zmm11, %%zmm5\n"
+        "    vsubps %%zmm18, %%zmm10, %%zmm6\n"
+        "    vsubps %%zmm19, %%zmm11, %%zmm7\n"
+        "    vaddps %%zmm20, %%zmm12, %%zmm8\n"
+        "    vaddps %%zmm21, %%zmm13, %%zmm9\n"
+        "    vsubps %%zmm20, %%zmm12, %%zmm10\n"
+        "    vsubps %%zmm21, %%zmm13, %%zmm11\n"
+        "    vaddps %%zmm22, %%zmm14, %%zmm12\n"
+        "    vaddps %%zmm23, %%zmm15, %%zmm13\n"
+        "    vsubps %%zmm22, %%zmm14, %%zmm14\n"
+        "    vsubps %%zmm23, %%zmm15, %%zmm15\n"
+        "    vunpckhps %%zmm4, %%zmm0, %%zmm16\n"
+        "    vunpckhps %%zmm5, %%zmm1, %%zmm17\n"
+        "    vunpckhps %%zmm6, %%zmm2, %%zmm18\n"
+        "    vunpckhps %%zmm7, %%zmm3, %%zmm19\n"
+        "    vmulps 32(%[tw]), %%zmm16, %%zmm20\n"
+        "    vmulps 32(%[tw]), %%zmm17, %%zmm21\n"
+        "    vmulps 32(%[tw]), %%zmm18, %%zmm22\n"
+        "    vmulps 32(%[tw]), %%zmm19, %%zmm23\n"
+        "    vunpckhps %%zmm12, %%zmm8, %%zmm24\n"
+        "    vunpckhps %%zmm13, %%zmm9, %%zmm25\n"
+        "    vunpckhps %%zmm14, %%zmm10, %%zmm26\n"
+        "    vunpckhps %%zmm15, %%zmm11, %%zmm27\n"
+        "    vmulps 160(%[tw]), %%zmm24, %%zmm28\n"
+        "    vmulps 160(%[tw]), %%zmm25, %%zmm29\n"
+        "    vmulps 160(%[tw]), %%zmm26, %%zmm30\n"
+        "    vfnmadd231ps 96(%[tw]), %%zmm17, %%zmm20\n"
+        "    vunpcklps %%zmm4, %%zmm0, %%zmm0\n"
+        "    vmulps 160(%[tw]), %%zmm27, %%zmm4\n"
+        "    vfmadd231ps 96(%[tw]), %%zmm16, %%zmm21\n"
+        "    vfnmadd231ps 96(%[tw]), %%zmm19, %%zmm22\n"
+        "    vfmadd231ps 96(%[tw]), %%zmm18, %%zmm23\n"
+        "    vunpcklps %%zmm5, %%zmm1, %%zmm1\n"
+        "    vunpcklps %%zmm12, %%zmm8, %%zmm5\n"
+        "    vfnmadd231ps 224(%[tw]), %%zmm25, %%zmm28\n"
+        "    vfmadd231ps 224(%[tw]), %%zmm24, %%zmm29\n"
+        "    vunpcklps %%zmm13, %%zmm9, %%zmm8\n"
+        "    vfnmadd231ps 224(%[tw]), %%zmm27, %%zmm30\n"
+        "    vunpcklps %%zmm6, %%zmm2, %%zmm2\n"
+        "    vunpcklps %%zmm7, %%zmm3, %%zmm3\n"
+        "    vfmadd231ps 224(%[tw]), %%zmm26, %%zmm4\n"
+        "    vunpcklps %%zmm14, %%zmm10, %%zmm6\n"
+        "    vunpcklps %%zmm15, %%zmm11, %%zmm7\n"
+        "    vaddps %%zmm20, %%zmm0, %%zmm9\n"
+        "    vaddps %%zmm21, %%zmm1, %%zmm10\n"
+        "    vsubps %%zmm20, %%zmm0, %%zmm0\n"
+        "    vsubps %%zmm21, %%zmm1, %%zmm1\n"
+        "    vaddps %%zmm28, %%zmm5, %%zmm11\n"
+        "    vaddps %%zmm29, %%zmm8, %%zmm12\n"
+        "    vsubps %%zmm28, %%zmm5, %%zmm5\n"
+        "    vsubps %%zmm29, %%zmm8, %%zmm8\n"
+        "    vaddps %%zmm23, %%zmm2, %%zmm13\n"
+        "    vsubps %%zmm22, %%zmm3, %%zmm14\n"
+        "    vsubps %%zmm23, %%zmm2, %%zmm2\n"
+        "    vaddps %%zmm22, %%zmm3, %%zmm3\n"
+        "    vaddps %%zmm4, %%zmm6, %%zmm15\n"
+        "    vsubps %%zmm30, %%zmm7, %%zmm16\n"
+        "    vsubps %%zmm4, %%zmm6, %%zmm4\n"
+        "    vaddps %%zmm30, %%zmm7, %%zmm6\n"
+        "    vshuff32x4 $238, %%zmm11, %%zmm9, %%zmm7\n"
+        "    vshuff32x4 $238, %%zmm12, %%zmm10, %%zmm17\n"
+        "    vshuff32x4 $238, %%zmm5, %%zmm0, %%zmm18\n"
+        "    vshuff32x4 $238, %%zmm8, %%zmm1, %%zmm19\n"
+        "    vmulps 288(%[tw]), %%zmm7, %%zmm20\n"
+        "    vmulps 288(%[tw]), %%zmm17, %%zmm21\n"
+        "    vmulps 288(%[tw]), %%zmm18, %%zmm22\n"
+        "    vmulps 288(%[tw]), %%zmm19, %%zmm23\n"
+        "    vshuff32x4 $238, %%zmm15, %%zmm13, %%zmm24\n"
+        "    vshuff32x4 $238, %%zmm16, %%zmm14, %%zmm25\n"
+        "    vshuff32x4 $238, %%zmm4, %%zmm2, %%zmm26\n"
+        "    vshuff32x4 $238, %%zmm6, %%zmm3, %%zmm27\n"
+        "    vmulps 416(%[tw]), %%zmm24, %%zmm28\n"
+        "    vmulps 416(%[tw]), %%zmm25, %%zmm29\n"
+        "    vmulps 416(%[tw]), %%zmm26, %%zmm30\n"
+        "    vfnmadd231ps 352(%[tw]), %%zmm17, %%zmm20\n"
+        "    vshuff32x4 $68, %%zmm11, %%zmm9, %%zmm9\n"
+        "    vmulps 416(%[tw]), %%zmm27, %%zmm11\n"
+        "    vfmadd231ps 352(%[tw]), %%zmm7, %%zmm21\n"
+        "    vfnmadd231ps 352(%[tw]), %%zmm19, %%zmm22\n"
+        "    vfmadd231ps 352(%[tw]), %%zmm18, %%zmm23\n"
+        "    vshuff32x4 $68, %%zmm12, %%zmm10, %%zmm7\n"
+        "    vshuff32x4 $68, %%zmm5, %%zmm0, %%zmm0\n"
+        "    vfnmadd231ps 480(%[tw]), %%zmm25, %%zmm28\n"
+        "    vfmadd231ps 480(%[tw]), %%zmm24, %%zmm29\n"
+        "    vshuff32x4 $68, %%zmm8, %%zmm1, %%zmm1\n"
+        "    vfnmadd231ps 480(%[tw]), %%zmm27, %%zmm30\n"
+        "    vshuff32x4 $68, %%zmm15, %%zmm13, %%zmm5\n"
+        "    vshuff32x4 $68, %%zmm16, %%zmm14, %%zmm8\n"
+        "    vfmadd231ps 480(%[tw]), %%zmm26, %%zmm11\n"
+        "    vshuff32x4 $68, %%zmm4, %%zmm2, %%zmm2\n"
+        "    vshuff32x4 $68, %%zmm6, %%zmm3, %%zmm3\n"
+        "    vaddps %%zmm20, %%zmm9, %%zmm4\n"
+        "    vaddps %%zmm21, %%zmm7, %%zmm6\n"
+        "    vsubps %%zmm20, %%zmm9, %%zmm9\n"
+        "    vsubps %%zmm21, %%zmm7, %%zmm7\n"
+        "    vaddps %%zmm23, %%zmm0, %%zmm10\n"
+        "    vsubps %%zmm22, %%zmm1, %%zmm12\n"
+        "    vsubps %%zmm23, %%zmm0, %%zmm0\n"
+        "    vaddps %%zmm22, %%zmm1, %%zmm1\n"
+        "    vaddps %%zmm28, %%zmm5, %%zmm13\n"
+        "    vaddps %%zmm29, %%zmm8, %%zmm14\n"
+        "    vsubps %%zmm28, %%zmm5, %%zmm5\n"
+        "    vsubps %%zmm29, %%zmm8, %%zmm8\n"
+        "    lea 544(%[tw]), %[tw]\n"
+        "    vaddps %%zmm11, %%zmm2, %%zmm15\n"
+        "    vsubps %%zmm30, %%zmm3, %%zmm16\n"
+        "    vsubps %%zmm11, %%zmm2, %%zmm2\n"
+        "    vmovups %%zmm4, (%[data])\n"
+        "    vmovups %%zmm6, 64(%[data])\n"
+        "    vmovups %%zmm9, (%[data],%[stride],4)\n"
+        "    vaddps %%zmm30, %%zmm3, %%zmm3\n"
+        "    vmovups %%zmm10, (%[data],%[stride],2)\n"
+        "    vmovups %%zmm12, 64(%[data],%[stride],2)\n"
+        "    vmovups %%zmm7, 64(%[data],%[stride],4)\n"
+        "    vmovups %%zmm13, (%[data],%[stride],1)\n"
+        "    vmovups %%zmm0, (%[fifth],%[stride],1)\n"
+        "    vmovups %%zmm1, 64(%[fifth],%[stride],1)\n"
+        "    vmovups %%zmm14, 64(%[data],%[stride],1)\n"
+        "    vmovups %%zmm5, (%[fifth])\n"
+        "    vmovups %%zmm8, 64(%[fifth])\n"
+        "    vmovups %%zmm15, (%[third])\n"
+        "    vmovups %%zmm16, 64(%[third])\n"
+        "    vmovups %%zmm2, (%[third],%[stride],4)\n"
+        "    lea 128(%[data]), %[data]\n"
+        "    lea 128(%[fifth]), %[fifth]\n"
+        "    vmovups %%zmm3, 64(%[third],%[stride],4)\n"
+        "    lea 128(%[third]), %[third]\n"
+        "    sub $1, %[j]\n"
+        "    jnz 2b\n"
+        "    lea (%[data],%[region_skip],1), %[data]\n"
+        "    lea (%[third],%[region_skip],1), %[third]\n"
+        "    lea (%[fifth],%[region_skip],1), %[fifth]\n"
+        "    sub $1, %[regions]\n"
+        "    jnz 1b\n"
+        "    vzeroupper\n"
+        : [data] "+r"(data), [tw] "+r"(tw), [stride] "+r"(stride), [count] "+r"(count), [regions] "+r"(regions), [third] "=&r"(third), [region_skip] "=&r"(region_skip), [fifth] "=&r"(fifth), [j] "=&r"(j)
+        :
+        : "xmm0", "xmm1", "xmm2", "xmm3", "xmm4", "xmm5", "xmm6", "xmm7", "xmm8", "xmm9", "xmm10", "xmm11", "xmm12", "xmm13", "xmm14", "xmm15", "xmm16", "xmm17", "xmm18", "xmm19", "xmm20", "xmm21", "xmm22", "xmm23", "xmm24", "xmm25", "xmm26", "xmm27", "xmm28", "xmm29", "xmm30", "cc", "memory");
+}
+
+/* Pass before the last, in place on split vectors. Butterfly j < count of a region uses the
+ * vectors at data + u*stride + 128*j, u < 4; the `regions` regions follow each other. Index bits 3
+ * and 2 are moved from the lanes to the registers and transformed. See the table builder in
+ * onefft.c for the twiddle layout. */
+__attribute__((target("avx512f"))) static void onefft_avx512_la2(float *data, const float *tw, size_t stride, size_t count, size_t regions) {
+    float *third;
+    size_t region_skip;
+    size_t j;
+    __asm__ volatile(
+        "    lea (%[data],%[stride],2), %[third]\n"
+        "    lea (%[stride],%[stride],2), %[region_skip]\n"
+        "    lea (%[third],%[stride],1), %[third]\n"
+        "1:\n"
+        "    mov %[count], %[j]\n"
+        "2:\n"
+        "    vmovups (%[data]), %%zmm0\n"
+        "    vmovups 64(%[data]), %%zmm1\n"
+        "    vmovups (%[data],%[stride],1), %%zmm2\n"
+        "    vmovups 64(%[data],%[stride],1), %%zmm3\n"
+        "    vmovups (%[data],%[stride],2), %%zmm4\n"
+        "    vmovups 64(%[data],%[stride],2), %%zmm5\n"
+        "    vmovups (%[third]), %%zmm6\n"
+        "    vmovups 64(%[third]), %%zmm7\n"
+        "    vunpckhps %%zmm2, %%zmm0, %%zmm8\n"
+        "    vunpckhps %%zmm3, %%zmm1, %%zmm9\n"
+        "    vunpckhps %%zmm6, %%zmm4, %%zmm10\n"
+        "    vunpckhps %%zmm7, %%zmm5, %%zmm11\n"
+        "    vmulps (%[tw]), %%zmm8, %%zmm12\n"
+        "    vmulps (%[tw]), %%zmm9, %%zmm13\n"
+        "    vmulps 128(%[tw]), %%zmm10, %%zmm14\n"
+        "    vmulps 128(%[tw]), %%zmm11, %%zmm15\n"
+        "    vunpcklps %%zmm2, %%zmm0, %%zmm0\n"
+        "    vunpcklps %%zmm3, %%zmm1, %%zmm1\n"
+        "    vunpcklps %%zmm6, %%zmm4, %%zmm2\n"
+        "    vunpcklps %%zmm7, %%zmm5, %%zmm3\n"
+        "    vfnmadd231ps 64(%[tw]), %%zmm9, %%zmm12\n"
+        "    vfmadd231ps 64(%[tw]), %%zmm8, %%zmm13\n"
+        "    vfnmadd231ps 192(%[tw]), %%zmm11, %%zmm14\n"
+        "    vfmadd231ps 192(%[tw]), %%zmm10, %%zmm15\n"
+        "    vaddps %%zmm12, %%zmm0, %%zmm4\n"
+        "    vaddps %%zmm13, %%zmm1, %%zmm5\n"
+        "    vsubps %%zmm12, %%zmm0, %%zmm0\n"
+        "    vsubps %%zmm13, %%zmm1, %%zmm1\n"
+        "    vaddps %%zmm14, %%zmm2, %%zmm6\n"
+        "    vaddps %%zmm15, %%zmm3, %%zmm7\n"
+        "    vsubps %%zmm14, %%zmm2, %%zmm2\n"
+        "    vsubps %%zmm15, %%zmm3, %%zmm3\n"
+        "    vshuff32x4 $238, %%zmm6, %%zmm4, %%zmm8\n"
+        "    vshuff32x4 $238, %%zmm7, %%zmm5, %%zmm9\n"
+        "    vshuff32x4 $68, %%zmm6, %%zmm4, %%zmm4\n"
+        "    vshuff32x4 $238, %%zmm2, %%zmm0, %%zmm6\n"
+        "    vshuff32x4 $238, %%zmm3, %%zmm1, %%zmm10\n"
+        "    vmulps 256(%[tw]), %%zmm8, %%zmm11\n"
+        "    vmulps 256(%[tw]), %%zmm9, %%zmm12\n"
+        "    vmulps 256(%[tw]), %%zmm6, %%zmm13\n"
+        "    vmulps 256(%[tw]), %%zmm10, %%zmm14\n"
+        "    vshuff32x4 $68, %%zmm7, %%zmm5, %%zmm5\n"
+        "    vshuff32x4 $68, %%zmm2, %%zmm0, %%zmm0\n"
+        "    vshuff32x4 $68, %%zmm3, %%zmm1, %%zmm1\n"
+        "    vfnmadd231ps 320(%[tw]), %%zmm9, %%zmm11\n"
+        "    vfmadd231ps 320(%[tw]), %%zmm8, %%zmm12\n"
+        "    vfnmadd231ps 320(%[tw]), %%zmm10, %%zmm13\n"
+        "    vfmadd231ps 320(%[tw]), %%zmm6, %%zmm14\n"
+        "    lea 384(%[tw]), %[tw]\n"
+        "    vaddps %%zmm11, %%zmm4, %%zmm2\n"
+        "    vsubps %%zmm11, %%zmm4, %%zmm3\n"
+        "    vaddps %%zmm12, %%zmm5, %%zmm4\n"
+        "    vsubps %%zmm12, %%zmm5, %%zmm5\n"
+        "    vaddps %%zmm14, %%zmm0, %%zmm6\n"
+        "    vsubps %%zmm13, %%zmm1, %%zmm7\n"
+        "    vsubps %%zmm14, %%zmm0, %%zmm0\n"
+        "    vaddps %%zmm13, %%zmm1, %%zmm1\n"
+        "    vmovups %%zmm2, (%[data])\n"
+        "    vmovups %%zmm3, (%[data],%[stride],2)\n"
+        "    vmovups %%zmm4, 64(%[data])\n"
+        "    vmovups %%zmm6, (%[data],%[stride],1)\n"
+        "    vmovups %%zmm5, 64(%[data],%[stride],2)\n"
+        "    vmovups %%zmm7, 64(%[data],%[stride],1)\n"
+        "    vmovups %%zmm0, (%[third])\n"
+        "    vmovups %%zmm1, 64(%[third])\n"
+        "    lea 128(%[data]), %[data]\n"
+        "    lea 128(%[third]), %[third]\n"
+        "    sub $1, %[j]\n"
+        "    jnz 2b\n"
+        "    lea (%[data],%[region_skip],1), %[data]\n"
+        "    lea (%[third],%[region_skip],1), %[third]\n"
+        "    sub $1, %[regions]\n"
+        "    jnz 1b\n"
+        "    vzeroupper\n"
+        : [data] "+r"(data), [tw] "+r"(tw), [stride] "+r"(stride), [count] "+r"(count), [regions] "+r"(regions), [third] "=&r"(third), [region_skip] "=&r"(region_skip), [j] "=&r"(j)
+        :
+        : "xmm0", "xmm1", "xmm2", "xmm3", "xmm4", "xmm5", "xmm6", "xmm7", "xmm8", "xmm9", "xmm10", "xmm11", "xmm12", "xmm13", "xmm14", "xmm15", "cc", "memory");
+}
+
+#pragma GCC diagnostic pop
+#endif
 #endif
 #endif
 
@@ -7934,7 +8785,8 @@ static size_t onefft_neon_plan(onefft_plan *plan, float *memory) {
 
 typedef struct {
     unsigned lane_bits;
-    onefft_first_fn *f4[2], *f_odd[2]; /* radix 4; radix 2 (SSE2) or 8 (AVX2) for odd log2n */
+    size_t (*low_bits)(size_t region, unsigned bits); /* the low output bits of a region */
+    onefft_first_fn *f4[2], *f_odd[2]; /* radix 4; radix 2 (SSE2) or 8 (AVX2, AVX-512) */
     onefft_middle_fn *c4;
     onefft_last_fn *l4[2];             /* SSE2 */
     onefft_last_fn *la, *la2, *la8, *la8x, *lb[2]; /* AVX2 */
@@ -7942,13 +8794,13 @@ typedef struct {
 } onefft_x86_kernels;
 
 static const onefft_x86_kernels onefft_sse2_kernels = {
-    2, {onefft_sse2_f4, onefft_sse2_f4i}, {onefft_sse2_f2, onefft_sse2_f2i}, onefft_sse2_c4,
+    2, onefft_bit_reverse, {onefft_sse2_f4, onefft_sse2_f4i}, {onefft_sse2_f2, onefft_sse2_f2i}, onefft_sse2_c4,
     {onefft_sse2_l4, onefft_sse2_l4i}, NULL, NULL, NULL, NULL, {NULL, NULL},
     {{0}, {0}, {0}, {onefft_sse2_n8, onefft_sse2_n8i}, {onefft_sse2_n16, onefft_sse2_n16i}, {0}}};
 
 #ifdef ONEFFT_AVX2
 static const onefft_x86_kernels onefft_avx2_kernels = {
-    3, {onefft_avx2_f4, onefft_avx2_f4i}, {onefft_avx2_f8, onefft_avx2_f8i}, onefft_avx2_c4,
+    3, onefft_bit_reverse, {onefft_avx2_f4, onefft_avx2_f4i}, {onefft_avx2_f8, onefft_avx2_f8i}, onefft_avx2_c4,
     {NULL, NULL}, onefft_avx2_la, onefft_avx2_la2, onefft_avx2_la8, onefft_avx2_la8x,
     {onefft_avx2_lb, onefft_avx2_lbi},
     {{0}, {0}, {0}, {onefft_sse2_n8, onefft_sse2_n8i}, {onefft_avx2_n16, onefft_avx2_n16i},
@@ -7960,14 +8812,14 @@ static const unsigned char onefft_avx2_element[8] = {0, 1, 4, 5, 2, 3, 6, 7};
 
 /* Adds a radix 4 middle pass that transforms two index bits after `done` are finished. The
  * twiddle of butterfly j in region r is exp(-2 pi i K / 2^(done + 2)), K = low + (j << shift)
- * where `low` is r with its `region_bits` bits reversed. Returns the new table size. */
+ * where `low` are the output bits that the region stands for. Returns the new table size. */
 static size_t onefft_x86_middle(onefft_plan *plan, float *memory, size_t floats, const onefft_x86_kernels *kernels,
                                 unsigned done, unsigned region_bits, size_t s_high, size_t s_low, size_t inner,
                                 size_t skip, size_t blocks) {
     size_t start = floats, regions = (size_t)1 << region_bits;
     for (size_t r = 0; r < regions; r++) {
         for (size_t j = 0; j < inner; j++) {
-            uint64_t k = onefft_bit_reverse(r, region_bits) + (j << region_bits);
+            uint64_t k = kernels->low_bits(r, region_bits) + (j << region_bits);
             floats += onefft_middle_entry(memory ? memory + floats : NULL, k, done + 2, 4);
         }
     }
@@ -8149,14 +9001,171 @@ static size_t onefft_x86_plan(onefft_plan *plan, float *memory, const onefft_x86
     return floats * sizeof(float);
 }
 
+/* ---- AVX-512 --------------------------------------------------------------------------------
+ *
+ * Not tuned on hardware yet. 16 lanes and 32 registers: four index bits sit in the lanes, a
+ * kernel holds 8 complex vectors. Transforms below 512 points use the AVX2 plan.
+ *
+ *   f8          the top 3 index bits
+ *   c4          2 bits each: first bit n-4 (see below) with bit n-5, then nested passes
+ *   la3 / la2   index bits (4,) 3, 2
+ *   lb          index bits 1, 0
+ *
+ * The four exchanges of lanes and registers in la and lb are one shuffle per register each
+ * only in one arrangement (gen/onefft_gen/avx512_kernels.py): the top four position bits of the
+ * output hold, from the top, output bits 0, 2, 1, 3. Output bit 3 comes from index bit n-4,
+ * which the first pass therefore leaves at that position.
+ */
+#ifdef ONEFFT_AVX512
+
+static size_t onefft_avx512_low_bits(size_t region, unsigned bits) {
+    static const unsigned char order[4] = {0, 2, 1, 3};
+    size_t low = 0;
+    for (unsigned i = 0; i < bits; i++) low |= ((region >> (bits - 1 - i)) & 1) << order[i];
+    return low;
+}
+
+static const onefft_x86_kernels onefft_avx512_kernels = {
+    4, onefft_avx512_low_bits, {NULL, NULL}, {onefft_avx512_f8, onefft_avx512_f8i}, onefft_avx512_c4,
+    {NULL, NULL}, onefft_avx512_la3, onefft_avx512_la2, NULL, NULL, {onefft_avx512_lb, onefft_avx512_lbi}, {{0}}};
+
+/* The element of 16 consecutive values that each lane holds. */
+static const unsigned char onefft_avx512_element[16] = {0, 1, 8, 9, 2, 3, 10, 11, 4, 5, 12, 13, 6, 7, 14, 15};
+
+static size_t onefft_avx512_plan(onefft_plan *plan, float *memory) {
+    const onefft_x86_kernels *kernels = &onefft_avx512_kernels;
+    unsigned log2n = plan->log2n;
+    int inverse = plan->inverse;
+    if (log2n < 9) return onefft_x86_plan(plan, memory, &onefft_avx2_kernels);
+    size_t n = plan->n, floats = 0, vector = 128;
+    if (memory) plan->middle_count = 0;
+
+    /* First pass: counts through index bits n-4 .. 4. The top one stays, the others are
+     * reversed. */
+    unsigned count_bits = log2n - 7, low_bits = count_bits - 1;
+    size_t first_count = (size_t)1 << count_bits;
+    if (memory) {
+        uint32_t *table = (uint32_t *)(memory + floats);
+        for (size_t a = 0; a < first_count; a++) {
+            size_t low = onefft_bit_reverse(a & (((size_t)1 << low_bits) - 1), low_bits);
+            table[2 * a] = (uint32_t)(a << 4);
+            table[2 * a + 1] = (uint32_t)(((a >> low_bits << low_bits) | low) << 4);
+        }
+        plan->first = kernels->f_odd[inverse];
+        plan->first_table = table;
+        plan->first_count = first_count;
+        plan->first_in_stride = plan->first_out_stride = n;
+    }
+    floats += 2 * first_count;
+    floats = (floats + 15) & ~(size_t)15;
+
+    /* Index bit n-4 at the fourth highest position with bit n-5 next to the lanes: not nested. */
+    unsigned done = 3;
+    floats = onefft_x86_middle(plan, memory, floats, kernels, done, 3, n / 2, vector, 1, vector, n >> 9);
+    done += 2;
+    if (memory) plan->nested_from = plan->middle_count;
+
+    /* Nested passes, then la3 for an even and la2 for an odd number of index bits. */
+    int three = log2n % 2 == 0;
+    for (; done + (three ? 5 : 4) < log2n; done += 2) {
+        size_t s_high = (size_t)8 << done;
+        floats = onefft_x86_middle(plan, memory, floats, kernels, done, 4, s_high, 2 * s_high, (size_t)1 << (done - 4),
+                                   3 * s_high, (n / 2) / (4 * s_high));
+    }
+
+    /* la: butterfly j of region r (output bits 0 and 2) has the low output bits
+     * K = k0 + 2 k1 + 4 k2 + 8 k3 + 16 j. Output bits 1 and 3 (k1, k3) select the vector at
+     * first and move into the lanes with the two exchanges: k3 to lane bit b0, k1 to q1.
+     *   la3 only: index bit 4, a scalar twiddle exp(-2 pi i 16 K / N) per (k1, k3)
+     *   index bit 3: a twiddle vector exp(-2 pi i 8 K / N) per k1, k3 varying over the lanes
+     *   index bit 2: a twiddle vector exp(-2 pi i 4 K / N), for la3 a second one turned by an
+     *                eighth for the upper output of index bit 4 */
+    size_t start = floats, count = n >> (three ? 9 : 8);
+    for (size_t r = 0; r < 4; r++) {
+        for (size_t j = 0; j < count; j++) {
+            uint64_t base = (r >> 1) + 4 * (r & 1) + 16 * j;
+            float *table = memory ? memory + floats : NULL;
+            if (three) {
+                for (size_t s = 0; s < 4; s++) onefft_table_root(table, 4, s, 16 * (base + 2 * (s >> 1) + 8 * (s & 1)), log2n);
+                floats += 8;
+            }
+            for (size_t k1 = 0; k1 < 2; k1++) {
+                table = memory ? memory + floats : NULL;
+                for (size_t lane = 0; lane < 16; lane++) {
+                    onefft_table_root(table, 16, lane, 8 * (base + 2 * k1 + 8 * (lane & 1)), log2n);
+                }
+                floats += 32;
+            }
+            for (size_t c = 0; c < (three ? 2u : 1u); c++) {
+                table = memory ? memory + floats : NULL;
+                for (size_t lane = 0; lane < 16; lane++) {
+                    onefft_table_root(table, 16, lane, 4 * (base + 2 * (lane >> 3) + 8 * (lane & 1)) + (n >> 3) * c, log2n);
+                }
+                floats += 32;
+            }
+        }
+    }
+    if (memory) {
+        onefft_last *l = &plan->last[0];
+        l->run = three ? kernels->la : kernels->la2;
+        l->tw = memory + start;
+        l->regions = 4;
+        l->stride = three ? n / 4 : n / 2;
+        l->count = count;
+    }
+    floats = (floats + 15) & ~(size_t)15;
+
+    /* lb: butterfly j handles the output indices K + (N/4) q, K = element + 16 j. */
+    start = floats;
+    for (size_t j = 0; j < n >> 6; j++) {
+        for (size_t l = 1; l < 4; l++) {
+            float *table = memory ? memory + floats : NULL;
+            for (size_t lane = 0; lane < 16; lane++) {
+                onefft_table_root(table, 16, lane, l * (onefft_avx512_element[lane] + 16 * j), log2n);
+            }
+            floats += 32;
+        }
+    }
+    if (memory) {
+        onefft_last *l = &plan->last[1];
+        l->run = kernels->lb[inverse];
+        l->tw = memory + start;
+        l->regions = 1;
+        l->stride = 2 * n;
+        l->count = n >> 6;
+        plan->last_count = 2;
+        plan->execute = onefft_execute_passes;
+    }
+    return floats * sizeof(float);
+}
+
+#endif /* ONEFFT_AVX512 */
+
 /* The best instruction set that this build contains and the processor and operating system
- * support. */
-static const onefft_x86_kernels *onefft_x86_select(void) {
+ * support: 4 for AVX-512, 3 for AVX2 with FMA, 2 for SSE2 (the number of lane bits). */
+static unsigned onefft_x86_select(void) {
 #ifdef ONEFFT_AVX2
     __builtin_cpu_init();
-    if (__builtin_cpu_supports("avx2") && __builtin_cpu_supports("fma")) return &onefft_avx2_kernels;
+    if (__builtin_cpu_supports("avx2") && __builtin_cpu_supports("fma")) {
+#ifdef ONEFFT_AVX512
+        if (__builtin_cpu_supports("avx512f")) return 4;
 #endif
-    return &onefft_sse2_kernels;
+        return 3;
+    }
+#endif
+    return 2;
+}
+
+static size_t onefft_x86_build(onefft_plan *plan, float *memory) {
+    switch (onefft_x86_select()) {
+#ifdef ONEFFT_AVX512
+    case 4: return onefft_avx512_plan(plan, memory);
+#endif
+#ifdef ONEFFT_AVX2
+    case 3: return onefft_x86_plan(plan, memory, &onefft_avx2_kernels);
+#endif
+    default: return onefft_x86_plan(plan, memory, &onefft_sse2_kernels);
+    }
 }
 
 #endif /* ONEFFT_X86 */
@@ -8167,7 +9176,7 @@ static size_t onefft_build(onefft_plan *plan, float *memory) {
 #if defined(ONEFFT_NEON)
     return onefft_neon_plan(plan, memory);
 #elif defined(ONEFFT_X86)
-    return onefft_x86_plan(plan, memory, onefft_x86_select());
+    return onefft_x86_build(plan, memory);
 #else
     return onefft_scalar_plan(plan, memory);
 #endif
@@ -8177,7 +9186,11 @@ const char *onefft_implementation(void) {
 #if defined(ONEFFT_NEON)
     return ONEFFT_NEON_FMA ? "neon (fused)" : "neon";
 #elif defined(ONEFFT_X86)
-    return onefft_x86_select()->lane_bits == 3 ? "avx2" : "sse2";
+    switch (onefft_x86_select()) {
+    case 4: return "avx512";
+    case 3: return "avx2";
+    default: return "sse2";
+    }
 #else
     return "portable";
 #endif

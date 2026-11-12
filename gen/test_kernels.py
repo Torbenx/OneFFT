@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 """Verifies the generated kernels by simulation against a double precision reference FFT.
 
-    test_kernels.py [neon] [sse2] [avx2]      default: all
+    test_kernels.py [neon] [sse2] [avx2] [avx512]      default: all
 """
 
 import random
 import sys
 
-from onefft_gen import model, neon_kernels, x86_kernels
+from onefft_gen import avx512_kernels, model, neon_kernels, x86_kernels
 
 
 def check(label, transform, log2n, inverse):
@@ -27,7 +27,7 @@ def check(label, transform, log2n, inverse):
 
 
 def main():
-    targets = sys.argv[1:] or ["neon", "sse2", "avx2"]
+    targets = sys.argv[1:] or ["neon", "sse2", "avx2", "avx512"]
     if "neon" in targets:
         kernels = neon_kernels.all_kernels()
         for inverse in (False, True):
@@ -48,6 +48,11 @@ def main():
             for inverse in (False, True):
                 for log2n in range(3, 13):
                     check(isa, lambda flat: model.x86_transform(x86, isa, log2n, flat, inverse), log2n, inverse)
+    if "avx512" in targets:
+        kernels = avx512_kernels.all_kernels()
+        for inverse in (False, True):
+            for log2n in range(9, 14):
+                check("avx512", lambda flat: model.avx512_transform(kernels, log2n, flat, inverse), log2n, inverse)
     return 0
 
 

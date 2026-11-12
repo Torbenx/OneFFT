@@ -124,6 +124,18 @@ class Kernel(X86):
         return self.exchange(a, b, lambda d, x, y: self.shufps(d, x, y, 0x88),
                              lambda d, x, y: self.shufps(d, x, y, 0xdd))
 
+    def exchange_q1(self, a, b):
+        """AVX-512: lane bit q1 (the upper two of the four 128 bit blocks) leaves; the register
+        index takes its place."""
+        return self.exchange(a, b, lambda d, x, y: self.shuff32x4(d, x, y, 0x44),
+                             lambda d, x, y: self.shuff32x4(d, x, y, 0xee))
+
+    def exchange_q0_to_q1(self, a, b):
+        """AVX-512: lane bit q0 (the odd blocks) leaves; the register index becomes q1 and the
+        old q1 becomes q0."""
+        return self.exchange(a, b, lambda d, x, y: self.shuff32x4(d, x, y, 0x88),
+                             lambda d, x, y: self.shuff32x4(d, x, y, 0xdd))
+
     def exchange_h(self, a, b):
         """Lane bit h (the 128 bit half) leaves; the register index takes its place."""
         return self.exchange(a, b, lambda d, x, y: self.perm2f128(d, x, y, 0x20),
@@ -151,11 +163,12 @@ def name(isa, kernel, inverse=False):
     return "onefft_%s_%s%s" % (isa, kernel, "i" * inverse)
 
 
-def first_pass(isa, radix, inverse):
+def first_pass(isa, radix, inverse, region_bits=None):
     k = Kernel(name(isa, "f%d" % radix, inverse),
                """First pass, radix %d. For each of the `count` entries (a, b) of `table`: reads %d interleaved
 vectors from in + 8*a + u*in_stride, transforms across them and writes output q as a split
-vector to out + 8*b + r*out_stride, where r is q with its bits reversed.""" % (radix, radix), isa, inverse)
+vector to out + 8*b + r*out_stride, where r is q with its bits reversed%s.""" % (
+                   radix, radix, "" if region_bits is None else " (and the lower two exchanged)"), isa, inverse)
     src_base = k.param("const float *", "in")
     dst_base = k.param("float *", "out")
     table = k.param("const uint32_t *", "table")
@@ -166,12 +179,16 @@ vector to out + 8*b + r*out_stride, where r is q with its bits reversed.""" % (r
     dst = k.gtemp("dst", "float *")
     a, b = k.gtemp("a"), k.gtemp("b")
     half = None
-    if radix == 8:
+    in_place = radix == 8 and isa == "avx2"
+    if in_place:
         # 8 complex vectors occupy all 16 registers: the transform runs in place, with its two
         # constants as memory operands.
         consts = k.gconst("consts", "const float *", [2.0] * k.lanes + [math.sqrt(0.5)] * k.lanes)
         k.two = Mem(consts)
         half = Mem(consts, k.bytes)
+    elif radix == 8:
+        consts = k.gconst("consts", "const float *", [math.sqrt(0.5)] * 4)
+        half = k.multiplier(Mem(consts))
     top = k.label()
     k.gload_pair32(a, b, table)
     k.gadd(src, src_base, a, shift=3)
@@ -181,11 +198,13 @@ vector to out + 8*b + r*out_stride, where r is q with its bits reversed.""" % (r
         xs.append(k.load_interleaved(Mem(src)))
         if u < radix - 1:
             k.gadd(src, src, in_stride)
-    ys = fft_plain(k, xs, half, in_place=radix == 8)
+    ys = fft_plain(k, xs, half, in_place=in_place)
     bits = radix.bit_length() - 1
     for r in range(radix):
-        # Region r of the output takes the result whose low output bits, reversed, are r.
-        k.store_split(ys[bit_reverse(r, bits)], Mem(dst))
+        # Region r of the output takes the result whose low output bits, reversed, are r
+        # (AVX-512 orders the regions differently, see avx512_kernels.low_bits).
+        q = bit_reverse(r, bits) if region_bits is None else region_bits(r)
+        k.store_split(ys[q], Mem(dst))
         if r < radix - 1:
             k.gadd(dst, dst, out_stride)
     k.loop(count, top)
