@@ -1,0 +1,8 @@
+# Test machines for scripts/remote.sh and scripts/android_run.sh. Copy to scripts/machines.local
+# (not tracked) and fill in: one alias per line, followed by user@host or an adb serial.
+m2        user@host
+intel     user@host
+epyc      user@host
+pixel3a   ADBSERIAL
+a50       ADBSERIAL
+s24       ADBSERIAL
