@@ -1,7 +1,9 @@
 /*
- * Developer tool: measures how many AVX2 instructions of a kind an x86-64 core runs per cycle,
+ * Developer tool: measures how many SIMD instructions of a kind an x86-64 core runs per cycle,
  * alone and in the mixes that occur in the kernels, to guide kernel design. Each test is a loop
  * of independent instructions; the result is cycles per loop iteration.
+ *
+ * Measures 256 bit instructions (AVX2); build with -DWIDE -mavx512f for 512 bit ones.
  */
 #define _POSIX_C_SOURCE 200809L
 #include <stdio.h>
@@ -17,6 +19,14 @@ static double now_ns(void) {
 
 static float buffer[8192] __attribute__((aligned(64)));
 
+#ifdef WIDE
+#define V "%%zmm"
+#define HALF "64+" /* the second vector of a cache line pair */
+#else
+#define V "%%ymm"
+#define HALF "32+"
+#endif
+
 #define REGS "xmm0", "xmm1", "xmm2", "xmm3", "xmm4", "xmm5", "xmm6", "xmm7", "xmm8", "xmm9", "xmm10", "xmm11", \
              "xmm12", "xmm13", "xmm14", "xmm15", "cc", "memory"
 
@@ -26,27 +36,54 @@ static float buffer[8192] __attribute__((aligned(64)));
 #define TEST(name, body)                                                                                    \
     static void test_##name(size_t n, float *p) {                                                           \
         float *q = p + 4096;                                                                                \
-        __asm__ volatile("vxorps %%ymm14, %%ymm14, %%ymm14\n vxorps %%ymm15, %%ymm15, %%ymm15\n 1:\n"       \
+        __asm__ volatile("vxorps " V "14, " V "14, " V "14\n vxorps " V "15, " V "15, " V "15\n 1:\n"       \
                          R8(body) "sub $1, %[n]\n jnz 1b\n vzeroupper\n"                                    \
                          : [n] "+r"(n), [p] "+r"(p), [q] "+r"(q) : : REGS);                                 \
     }
 
-#define OP(op, r) op " %%ymm14, %%ymm15, %%ymm" r "\n"
+#define OP(op, r) op " " V "14, " V "15, " V r "\n"
 #define B_empty(r, o) ""
-#define B_load(r, o) "vmovups " o "(%[p]), %%ymm" r "\n"
-#define B_load2(r, o) B_load(r, o) "vmovups 32+" o "(%[p]), %%ymm8\n"
-#define B_store(r, o) "vmovups %%ymm" r ", " o "(%[q])\n"
-#define B_store2(r, o) B_store(r, o) "vmovups %%ymm" r ", 32+" o "(%[q])\n"
+#define B_load(r, o) "vmovups " o "(%[p]), " V r "\n"
+#define B_load2(r, o) B_load(r, o) "vmovups " HALF o "(%[p]), " V "8\n"
+#define B_store(r, o) "vmovups " V r ", " o "(%[q])\n"
+#define B_store2(r, o) B_store(r, o) "vmovups " V r ", " HALF o "(%[q])\n"
 #define B_add2(r, o) OP("vaddps", r) OP("vaddps", "8")
 #define B_mul2(r, o) OP("vmulps", r) OP("vmulps", "8")
 #define B_add_mul(r, o) OP("vaddps", r) OP("vmulps", "8")
-#define B_broadcast(r, o) "vbroadcastss " o "(%[p]), %%ymm" r "\n"
-#define B_mul_mem(r, o) "vmulps " o "(%[p]), %%ymm15, %%ymm" r "\n"
+#define B_broadcast(r, o) "vbroadcastss " o "(%[p]), " V r "\n"
+#define B_mul_mem(r, o) "vmulps " o "(%[p]), " V "15, " V r "\n"
 #define B_unpck2(r, o) OP("vunpcklps", r) OP("vunpckhps", "8")
-#define B_shufps2(r, o) "vshufps $0x88, %%ymm14, %%ymm15, %%ymm" r "\n vshufps $0xdd, %%ymm14, %%ymm15, %%ymm8\n"
-#define B_shufps_mem(r, o) "vshufps $0x88, " o "(%[p]), %%ymm15, %%ymm" r "\n"
-#define B_perm2f128(r, o) "vperm2f128 $0x20, %%ymm14, %%ymm15, %%ymm" r "\n vperm2f128 $0x31, %%ymm14, %%ymm15, %%ymm8\n"
-#define B_insert_mem(r, o) "vmovups " o "(%[p]), %%xmm" r "\n vinsertf128 $1, 16+" o "(%[p]), %%ymm" r ", %%ymm" r "\n"
+#define B_shufps2(r, o) "vshufps $0x88, " V "14, " V "15, " V r "\n vshufps $0xdd, " V "14, " V "15, " V "8\n"
+#define B_shufps_mem(r, o) "vshufps $0x88, " o "(%[p]), " V "15, " V r "\n"
+#ifdef WIDE /* the shuffles that cross the 128 bit blocks, and a scalar as an operand */
+#define B_cross2(r, o) "vshuff32x4 $0x44, " V "14, " V "15, " V r "\n vshuff32x4 $0xee, " V "14, " V "15, " V "8\n"
+#define B_scalar_mem(r, o) "vmulps " o "(%[p])%{1to16%}, " V "15, " V r "\n"
+#else
+#define B_cross2(r, o) "vperm2f128 $0x20, " V "14, " V "15, " V r "\n vperm2f128 $0x31, " V "14, " V "15, " V "8\n"
+#define B_scalar_mem(r, o) "vmovups " o "(%[p]), %%xmm" r "\n vinsertf128 $1, 16+" o "(%[p]), " V r ", " V r "\n"
+#endif
+#define B_add4(r, o) B_add2(r, o) OP("vaddps", "9") OP("vaddps", "10")
+#define B_mul4(r, o) B_mul2(r, o) OP("vmulps", "9") OP("vmulps", "10")
+#define B_add4_mul4(r, o) B_add4(r, o) OP("vmulps", "11") OP("vmulps", "12") OP("vmulps", "13") OP("vmulps", r)
+#define B_add4_mul4_store2(r, o) B_add4_mul4(r, o) B_store2(r, o)
+#define B_load_store(r, o) B_load(r, o) B_store(r, o)
+#define B_load2_store(r, o) B_load2(r, o) B_store(r, o)
+#define B_load2_store2(r, o) B_load2(r, o) B_store2(r, o)
+/* A twiddle that two multiplications use, with a load and a store per two multiplications as in
+ * a pass: as a vector operand, a vector in a register, and a scalar that is broadcast. */
+#define MUL(src, r) "vmulps " src ", " V "15, " V r "\n"
+#define B_tw_vector_mem(r, o) B_load(r, o) MUL(HALF o "(%[p])", r) MUL(HALF o "(%[p])", "9") B_store(r, o)
+#define B_tw_vector_reg(r, o) B_load(r, o) "vmovups " HALF o "(%[p]), " V "8\n" MUL(V "8", r) MUL(V "8", "9") B_store(r, o)
+#define B_tw_scalar_reg(r, o) B_load(r, o) "vbroadcastss " HALF o "(%[p]), " V "8\n" MUL(V "8", r) MUL(V "8", "9") B_store(r, o)
+#ifdef WIDE
+#define B_tw_scalar_mem(r, o) B_load(r, o) MUL(HALF o "(%[p])%{1to16%}", r) MUL(HALF o "(%[p])%{1to16%}", "9") B_store(r, o)
+#else
+#define B_tw_scalar_mem(r, o) B_tw_scalar_reg(r, o)
+#endif
+/* one eighth of a radix 4 middle pass: memory operations and arithmetic in its proportions */
+#define B_pass(r, o) B_load(r, o) "vbroadcastss " HALF o "(%[p]), " V "8\n" B_add2_mul2(r, o) B_store(r, o)
+#define B_pass_dep(r, o) B_load(r, o) "vbroadcastss " HALF o "(%[p]), " V "8\n" \
+    "vmulps " V r ", " V "8, " V "9\n vmulps " V r ", " V "8, " V "10\n vaddps " V "9, " V "10, " V "11\n vaddps " V "9, " V "10, " V r "\n" B_store(r, o)
 #define B_add2_store(r, o) B_add2(r, o) B_store(r, o)
 #define B_mul2_store(r, o) B_mul2(r, o) B_store(r, o)
 #define B_add2_mul2(r, o) B_add2(r, o) OP("vmulps", "9") OP("vmulps", "10")
@@ -54,11 +91,13 @@ static float buffer[8192] __attribute__((aligned(64)));
 #define B_unpck2_add2(r, o) B_unpck2(r, o) OP("vaddps", "9") OP("vaddps", "10")
 #define B_unpck2_mul2(r, o) B_unpck2(r, o) OP("vmulps", "9") OP("vmulps", "10")
 #define B_unpck2_store(r, o) B_unpck2(r, o) B_store(r, o)
-#define B_load_add_store(r, o) B_load(r, o) "vaddps %%ymm" r ", %%ymm15, %%ymm" r "\n" B_store(r, o)
+#define B_load_add_store(r, o) B_load(r, o) "vaddps " V r ", " V "15, " V r "\n" B_store(r, o)
 #define T(name) TEST(name, B_##name)
 T(empty) T(load) T(load2) T(store) T(store2) T(add2) T(mul2) T(add_mul) T(broadcast) T(mul_mem) T(unpck2) T(shufps2)
-T(shufps_mem) T(perm2f128) T(insert_mem) T(add2_store) T(mul2_store) T(add2_mul2) T(add2_mul2_store) T(unpck2_add2)
-T(unpck2_mul2) T(unpck2_store) T(load_add_store)
+T(shufps_mem) T(cross2) T(scalar_mem) T(add2_store) T(mul2_store) T(add2_mul2) T(add2_mul2_store) T(unpck2_add2)
+T(unpck2_mul2) T(unpck2_store) T(load_add_store) T(add4) T(mul4) T(add4_mul4)
+T(add4_mul4_store2) T(load_store) T(load2_store) T(load2_store2) T(pass) T(pass_dep)
+T(tw_vector_mem) T(tw_vector_reg) T(tw_scalar_reg) T(tw_scalar_mem)
 
 static double cycle;
 
@@ -84,8 +123,10 @@ int main(void) {
     double base = measure(test_empty);
 #define RUN(name) printf("  %-18s %5.2f\n", #name, measure(test_##name) - base + 1.0)
     RUN(load); RUN(load2); RUN(store); RUN(store2); RUN(add2); RUN(mul2); RUN(add_mul); RUN(broadcast);
-    RUN(mul_mem); RUN(unpck2); RUN(shufps2); RUN(shufps_mem); RUN(perm2f128); RUN(insert_mem); RUN(add2_store);
+    RUN(mul_mem); RUN(unpck2); RUN(shufps2); RUN(shufps_mem); RUN(cross2); RUN(scalar_mem); RUN(add2_store);
     RUN(mul2_store); RUN(add2_mul2); RUN(add2_mul2_store); RUN(unpck2_add2); RUN(unpck2_mul2); RUN(unpck2_store);
-    RUN(load_add_store);
+    RUN(load_add_store); RUN(add4); RUN(mul4); RUN(add4_mul4); RUN(add4_mul4_store2);
+    RUN(load_store); RUN(load2_store); RUN(load2_store2); RUN(pass); RUN(pass_dep);
+    RUN(tw_vector_mem); RUN(tw_vector_reg); RUN(tw_scalar_reg); RUN(tw_scalar_mem);
     return 0;
 }
