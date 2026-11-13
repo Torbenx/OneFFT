@@ -30,6 +30,7 @@ MACHINES = {  # file name: chart title
     "a50": "Cortex-A73 (Samsung Galaxy A50), AArch64",
     "zen5": "AMD EPYC 9255 (Zen 5), AVX-512",
     "zen4": "AMD EPYC 9254 (Zen 4), AVX-512",
+    "clx": "Intel Xeon Gold 6230R (Cascade Lake), AVX-512",
     "intel": "Intel Core i5-9600K (Skylake), AVX2",
     "epyc": "AMD EPYC 7443P (Zen 3), AVX2",
     "zen2": "AMD Ryzen 7 5700U (Zen 2), AVX2",

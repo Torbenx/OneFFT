@@ -5,9 +5,9 @@ and redraws the charts in docs/plots (scripts/plots.py).
     scripts/update_docs.py
 
 docs/results holds the output of bench/bench.c per machine: pixel3a.txt, a50.txt, s24.txt,
-m2.txt, zen2.txt, intel.txt, epyc.txt, zen4.txt, zen5.txt, intel_sse2.txt. In the last two but
-one, the lines "onefft_avx2" are OneFFT built with -DONEFFT_NO_AVX512. A table is placed between
-the markers <!-- results:NAME --> and <!-- end -->.
+m2.txt, zen2.txt, intel.txt, epyc.txt, zen4.txt, zen5.txt, clx.txt, intel_sse2.txt. In zen4.txt,
+zen5.txt and clx.txt the lines "onefft_avx2" are OneFFT built with -DONEFFT_NO_AVX512. A table is
+placed between the markers <!-- results:NAME --> and <!-- end -->.
 """
 
 import os

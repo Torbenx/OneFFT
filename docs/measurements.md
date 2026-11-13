@@ -17,6 +17,7 @@ before trying to make something faster.
 | Server | AMD EPYC 7443P (Zen 3) | AVX2 |
 | Server | AMD EPYC 9254 (Zen 4), 4.1 GHz | AVX-512 |
 | Server | AMD EPYC 9255 (Zen 5), 4.3 GHz | AVX-512 |
+| Server | Intel Xeon Gold 6230R (Cascade Lake), 2.1 GHz | AVX-512 |
 
 All times are for one forward transform, single thread, pinned to the fastest cores on the
 phones, minimum over 15 samples of at least 5 ms each (`bench/bench.c`). Every library is called
@@ -32,12 +33,18 @@ and imaginary arrays and is given those (the conversion is not timed, which favo
 `scripts/third_party.sh` builds the libraries and `scripts/build_bench.sh` the benchmark.
 Compilers: Clang 18 (Android NDK r27c), Apple Clang 21, GCC 15.
 
-Zen 4, Zen 5, Zen 2 and the M2 were measured with the input buffer at the start of a page and
-the output buffer 2048 bytes behind one. Where the two sit relative to each other matters for
-small transforms on Zen 4: with the same offset in their pages, loads of the next transform wait
-for stores of the previous one, and FFTW takes 56 instead of 29 ns for 64 points, OneFFT 56
-instead of 47 ns for 128. The phones, Skylake and Zen 3 were measured earlier, with buffers
-wherever the allocator put them (the Zen 3 server was not available again).
+Turbo is switched off on the Xeon: everything runs at 2.1 GHz there. With turbo, processors of
+its generation run 512 bit code at a lower frequency than other code; what that does to the
+AVX-512 kernels against the AVX2 kernels was not measured.
+
+The input buffer is at the start of a page and the output buffer 2048 bytes behind one. Where
+the two sit relative to each other matters for small transforms on some cores: with the same
+offset in their pages, loads of the next transform wait for stores of the previous one. On
+Zen 4 FFTW then takes 56 instead of 29 ns for 64 points and OneFFT 56 instead of 47 ns for 128;
+on Cascade Lake OneFFT is up to 7% slower from 32 to 128 points. The benchmark also works for
+half a second before it measures: a core that was just woken up has not reached its frequency
+yet, and the first size came out up to 1.5 times too slow on the phones. Only Zen 3 was measured
+before both, with buffers wherever the allocator put them (the server was not available again).
 
 ## Results
 
@@ -61,26 +68,26 @@ the time of OneFFT.
 <!-- results:s24 -->
 | n | OneFFT | FFTW | FFmpeg | PFFFT | vs FFTW | vs FFmpeg | vs PFFFT |
 |--:|--:|--:|--:|--:|--:|--:|--:|
-| 2 | 1.1 | 3.1 | 0.9 | - | 2.82 | 0.82 | - |
-| 4 | 1.9 | 3.7 | 1.6 | - | 1.95 | 0.84 | - |
+| 2 | 1.1 | 3.4 | 0.9 | - | 3.09 | 0.82 | - |
+| 4 | 1.9 | 3.8 | 1.2 | - | 2.00 | 0.63 | - |
 | 8 | 4.4 | 7.5 | 4.8 | - | 1.70 | 1.09 | - |
-| 16 | 8.7 | 18.9 | 12.6 | 19.1 | 2.17 | 1.45 | 2.20 |
-| 32 | 16.9 | 24.7 | 26.9 | 32.5 | 1.46 | 1.59 | 1.92 |
-| 64 | 47.0 | 50.7 | 67.7 | 73.6 | 1.08 | 1.44 | 1.57 |
-| 128 | 97.8 | 109.0 | 154.7 | 150.5 | 1.11 | 1.58 | 1.54 |
-| 256 | 221.0 | 234.1 | 364.3 | 317.1 | 1.06 | 1.65 | 1.43 |
-| 512 | 489.9 | 561.9 | 847.8 | 714.1 | 1.15 | 1.73 | 1.46 |
-| 1024 | 1088 | 1280 | 1877 | 1476 | 1.18 | 1.73 | 1.36 |
-| 2048 | 2379 | 2772 | 4120 | 3269 | 1.16 | 1.73 | 1.37 |
-| 4096 | 5125 | 6207 | 9047 | 7292 | 1.21 | 1.77 | 1.42 |
-| 8192 | 11069 | 18286 | 24546 | 15996 | 1.65 | 2.22 | 1.45 |
-| 16384 | 24730 | 41888 | 53323 | 34860 | 1.69 | 2.16 | 1.41 |
-| 32768 | 53596 | 93390 | 117887 | 76394 | 1.74 | 2.20 | 1.43 |
-| 65536 | 115218 | 192529 | 251765 | 153120 | 1.67 | 2.19 | 1.33 |
-| 131072 | 248550 | 443613 | 558852 | 348188 | 1.78 | 2.25 | 1.40 |
-| 262144 | 534678 | 1000225 | 2548672 | 804922 | 1.87 | 4.77 | 1.51 |
-| 524288 | 1225722 | 3041602 | 5570117 | 2138848 | 2.48 | 4.54 | 1.74 |
-| 1048576 | 2949024 | 6842500 | 12856132 | 8048164 | 2.32 | 4.36 | 2.73 |
+| 16 | 8.7 | 18.7 | 12.6 | 19.0 | 2.15 | 1.45 | 2.18 |
+| 32 | 16.4 | 24.2 | 26.9 | 33.2 | 1.48 | 1.64 | 2.02 |
+| 64 | 45.1 | 51.0 | 67.9 | 73.9 | 1.13 | 1.51 | 1.64 |
+| 128 | 97.7 | 109.4 | 154.2 | 150.7 | 1.12 | 1.58 | 1.54 |
+| 256 | 220.5 | 234.2 | 362.5 | 317.8 | 1.06 | 1.64 | 1.44 |
+| 512 | 488.0 | 538.4 | 811.8 | 696.7 | 1.10 | 1.66 | 1.43 |
+| 1024 | 1065 | 1250 | 1879 | 1489 | 1.17 | 1.76 | 1.40 |
+| 2048 | 2332 | 2718 | 4123 | 3362 | 1.17 | 1.77 | 1.44 |
+| 4096 | 5077 | 5701 | 9004 | 7112 | 1.12 | 1.77 | 1.40 |
+| 8192 | 11435 | 17572 | 24186 | 15494 | 1.54 | 2.12 | 1.36 |
+| 16384 | 24322 | 41256 | 53966 | 34386 | 1.70 | 2.22 | 1.41 |
+| 32768 | 53457 | 92352 | 117398 | 74132 | 1.73 | 2.20 | 1.39 |
+| 65536 | 114614 | 187395 | 250918 | 151965 | 1.64 | 2.19 | 1.33 |
+| 131072 | 244849 | 452910 | 561308 | 346826 | 1.85 | 2.29 | 1.42 |
+| 262144 | 523408 | 1000362 | 2480664 | 783203 | 1.91 | 4.74 | 1.50 |
+| 524288 | 1211797 | 3074492 | 5571563 | 2163047 | 2.54 | 4.60 | 1.78 |
+| 1048576 | 2930782 | 6612149 | 12775937 | 8027657 | 2.26 | 4.36 | 2.74 |
 <!-- end -->
 
 </details>
@@ -99,25 +106,25 @@ the time of OneFFT.
 | n | OneFFT | FFTW | FFmpeg | PFFFT | vs FFTW | vs FFmpeg | vs PFFFT |
 |--:|--:|--:|--:|--:|--:|--:|--:|
 | 2 | 4.0 | 11.5 | 4.0 | - | 2.88 | 1.00 | - |
-| 4 | 8.6 | 15.9 | 5.6 | - | 1.85 | 0.65 | - |
-| 8 | 22.2 | 28.9 | 21.5 | - | 1.30 | 0.97 | - |
-| 16 | 42.3 | 67.5 | 54.2 | 88.7 | 1.60 | 1.28 | 2.10 |
-| 32 | 93.5 | 120.0 | 143.9 | 157.1 | 1.28 | 1.54 | 1.68 |
-| 64 | 237.7 | 251.0 | 336.0 | 342.7 | 1.06 | 1.41 | 1.44 |
-| 128 | 559.1 | 538.7 | 794.5 | 737.1 | 0.96 | 1.42 | 1.32 |
-| 256 | 1196 | 1152 | 1833 | 1565 | 0.96 | 1.53 | 1.31 |
-| 512 | 2591 | 2578 | 4208 | 3391 | 1.00 | 1.62 | 1.31 |
-| 1024 | 5847 | 5742 | 9463 | 7152 | 0.98 | 1.62 | 1.22 |
-| 2048 | 12633 | 14476 | 21033 | 16174 | 1.15 | 1.66 | 1.28 |
-| 4096 | 29110 | 34785 | 51160 | 40749 | 1.19 | 1.76 | 1.40 |
-| 8192 | 63061 | 86929 | 121626 | 102456 | 1.38 | 1.93 | 1.62 |
-| 16384 | 155583 | 203591 | 275980 | 235306 | 1.31 | 1.77 | 1.51 |
-| 32768 | 346634 | 461823 | 656719 | 513770 | 1.33 | 1.89 | 1.48 |
-| 65536 | 813151 | 1130234 | 1572760 | 1113763 | 1.39 | 1.93 | 1.37 |
-| 131072 | 1788724 | 2811303 | 4643125 | 3447292 | 1.57 | 2.60 | 1.93 |
-| 262144 | 4403855 | 6090366 | 14824376 | 9449792 | 1.38 | 3.37 | 2.15 |
-| 524288 | 8826928 | 17496824 | 31115524 | 20413023 | 1.98 | 3.53 | 2.31 |
-| 1048576 | 19808283 | 37532399 | 64856048 | 42985056 | 1.89 | 3.27 | 2.17 |
+| 4 | 8.9 | 15.9 | 5.7 | - | 1.79 | 0.64 | - |
+| 8 | 22.2 | 28.9 | 21.6 | - | 1.30 | 0.97 | - |
+| 16 | 43.1 | 67.7 | 54.2 | 89.4 | 1.57 | 1.26 | 2.07 |
+| 32 | 93.5 | 119.9 | 144.5 | 156.6 | 1.28 | 1.55 | 1.67 |
+| 64 | 238.2 | 250.8 | 335.8 | 344.8 | 1.05 | 1.41 | 1.45 |
+| 128 | 559.0 | 538.8 | 795.8 | 741.1 | 0.96 | 1.42 | 1.33 |
+| 256 | 1192 | 1151 | 1833 | 1539 | 0.97 | 1.54 | 1.29 |
+| 512 | 2593 | 2579 | 4220 | 3381 | 0.99 | 1.63 | 1.30 |
+| 1024 | 5834 | 5725 | 9482 | 7146 | 0.98 | 1.63 | 1.23 |
+| 2048 | 12634 | 14316 | 21093 | 16119 | 1.13 | 1.67 | 1.28 |
+| 4096 | 29180 | 35212 | 51932 | 41294 | 1.21 | 1.78 | 1.42 |
+| 8192 | 62830 | 86675 | 121685 | 102853 | 1.38 | 1.94 | 1.64 |
+| 16384 | 155495 | 211455 | 275615 | 220664 | 1.36 | 1.77 | 1.42 |
+| 32768 | 347650 | 464128 | 655781 | 483145 | 1.34 | 1.89 | 1.39 |
+| 65536 | 780820 | 1150286 | 1639922 | 1079974 | 1.47 | 2.10 | 1.38 |
+| 131072 | 1786745 | 2790157 | 4698282 | 3437449 | 1.56 | 2.63 | 1.92 |
+| 262144 | 4331251 | 5998699 | 14627710 | 9446250 | 1.38 | 3.38 | 2.18 |
+| 524288 | 8992084 | 17438231 | 30991826 | 20560731 | 1.94 | 3.45 | 2.29 |
+| 1048576 | 19480419 | 37079222 | 64838965 | 42778442 | 1.90 | 3.33 | 2.20 |
 <!-- end -->
 
 </details>
@@ -135,26 +142,26 @@ the time of OneFFT.
 <!-- results:a50 -->
 | n | OneFFT | FFTW | FFmpeg | PFFFT | vs FFTW | vs FFmpeg | vs PFFFT |
 |--:|--:|--:|--:|--:|--:|--:|--:|
-| 2 | 5.0 | 15.3 | 4.9 | - | 3.06 | 0.98 | - |
+| 2 | 4.8 | 15.2 | 4.8 | - | 3.17 | 1.00 | - |
 | 4 | 10.6 | 20.8 | 7.6 | - | 1.96 | 0.72 | - |
-| 8 | 27.5 | 37.6 | 24.1 | - | 1.37 | 0.88 | - |
-| 16 | 47.1 | 89.1 | 59.2 | 104.6 | 1.89 | 1.26 | 2.22 |
-| 32 | 95.2 | 135.0 | 140.3 | 175.1 | 1.42 | 1.47 | 1.84 |
-| 64 | 247.1 | 261.1 | 333.1 | 402.1 | 1.06 | 1.35 | 1.63 |
-| 128 | 604.8 | 544.9 | 790.5 | 884.2 | 0.90 | 1.31 | 1.46 |
-| 256 | 1277 | 1174 | 1824 | 1894 | 0.92 | 1.43 | 1.48 |
-| 512 | 2677 | 2779 | 4221 | 4216 | 1.04 | 1.58 | 1.57 |
-| 1024 | 6408 | 6809 | 9552 | 8930 | 1.06 | 1.49 | 1.39 |
-| 2048 | 14670 | 15752 | 23146 | 22690 | 1.07 | 1.58 | 1.55 |
-| 4096 | 32741 | 37842 | 59062 | 53994 | 1.16 | 1.80 | 1.65 |
-| 8192 | 81653 | 100835 | 140945 | 126844 | 1.23 | 1.73 | 1.55 |
-| 16384 | 170394 | 227445 | 311411 | 254584 | 1.33 | 1.83 | 1.49 |
-| 32768 | 378514 | 541486 | 696827 | 625337 | 1.43 | 1.84 | 1.65 |
-| 65536 | 905317 | 1427673 | 2027846 | 1720788 | 1.58 | 2.24 | 1.90 |
-| 131072 | 2043077 | 3168885 | 6200731 | 5690730 | 1.55 | 3.03 | 2.79 |
-| 262144 | 4749154 | 7479308 | 17297346 | 10778423 | 1.57 | 3.64 | 2.27 |
-| 524288 | 10035039 | 19788077 | 36264270 | 25622923 | 1.97 | 3.61 | 2.55 |
-| 1048576 | 21079576 | 42665307 | 76883846 | 48047923 | 2.02 | 3.65 | 2.28 |
+| 8 | 27.5 | 37.6 | 24.2 | - | 1.37 | 0.88 | - |
+| 16 | 46.7 | 87.8 | 59.5 | 106.4 | 1.88 | 1.27 | 2.28 |
+| 32 | 93.4 | 135.4 | 140.6 | 176.7 | 1.45 | 1.51 | 1.89 |
+| 64 | 247.6 | 261.8 | 332.2 | 406.4 | 1.06 | 1.34 | 1.64 |
+| 128 | 605.0 | 543.0 | 788.1 | 885.5 | 0.90 | 1.30 | 1.46 |
+| 256 | 1277 | 1171 | 1822 | 1887 | 0.92 | 1.43 | 1.48 |
+| 512 | 2677 | 2774 | 4208 | 4227 | 1.04 | 1.57 | 1.58 |
+| 1024 | 6407 | 6809 | 9518 | 8940 | 1.06 | 1.49 | 1.40 |
+| 2048 | 14778 | 15745 | 23105 | 22889 | 1.07 | 1.56 | 1.55 |
+| 4096 | 32760 | 37823 | 59516 | 53824 | 1.15 | 1.82 | 1.64 |
+| 8192 | 81630 | 100630 | 141056 | 127062 | 1.23 | 1.73 | 1.56 |
+| 16384 | 170288 | 226726 | 309072 | 250625 | 1.33 | 1.81 | 1.47 |
+| 32768 | 374240 | 541457 | 682038 | 634452 | 1.45 | 1.82 | 1.70 |
+| 65536 | 905154 | 1456980 | 2060020 | 1684346 | 1.61 | 2.28 | 1.86 |
+| 131072 | 2036846 | 3425769 | 6123154 | 5838577 | 1.68 | 3.01 | 2.87 |
+| 262144 | 4767000 | 7681847 | 17338769 | 10369846 | 1.61 | 3.64 | 2.18 |
+| 524288 | 10013424 | 19744615 | 36122308 | 26964346 | 1.97 | 3.61 | 2.69 |
+| 1048576 | 21215846 | 42221731 | 76520807 | 47696770 | 1.99 | 3.61 | 2.25 |
 <!-- end -->
 
 </details>
@@ -273,6 +280,46 @@ they have code for it.
 
 </details>
 
+### Intel Xeon Gold 6230R (Cascade Lake), AVX-512
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="plots/clx-dark.svg">
+  <img src="plots/clx.svg" alt="Line chart of the speed of OneFFT with its AVX-512 and with its AVX2 kernels, FFTW, FFmpeg and PFFFT over the transform size on an Intel Xeon Gold 6230R; the numbers are in the tables below." width="760">
+</picture>
+
+At 2.1 GHz, without turbo (see Setup). The times are the minimum of two runs of the benchmark:
+on this machine a whole run is sometimes 5 to 15% slower than another at the small sizes.
+
+<details>
+<summary>Times in nanoseconds</summary>
+
+<!-- results:clx -->
+| n | OneFFT | OneFFT (AVX2) | FFTW | FFmpeg | PFFFT | vs OneFFT (AVX2) | vs FFTW | vs FFmpeg | vs PFFFT |
+|--:|--:|--:|--:|--:|--:|--:|--:|--:|--:|
+| 2 | 4.3 | 4.3 | 13.0 | 3.3 | - | 1.00 | 3.02 | 0.77 | - |
+| 4 | 6.2 | 6.2 | 14.8 | 4.8 | - | 1.00 | 2.39 | 0.77 | - |
+| 8 | 15.8 | 15.9 | 25.3 | 12.7 | - | 1.01 | 1.60 | 0.80 | - |
+| 16 | 16.1 | 16.1 | 52.4 | 25.9 | 73.3 | 1.00 | 3.25 | 1.61 | 4.55 |
+| 32 | 24.8 | 32.0 | 46.0 | 50.9 | 101.5 | 1.29 | 1.85 | 2.05 | 4.09 |
+| 64 | 46.1 | 85.8 | 65.7 | 114.0 | 231.1 | 1.86 | 1.43 | 2.47 | 5.01 |
+| 128 | 76.1 | 150.9 | 114.5 | 240.4 | 470.8 | 1.98 | 1.50 | 3.16 | 6.19 |
+| 256 | 182.9 | 314.9 | 218.7 | 562.3 | 960.7 | 1.72 | 1.20 | 3.07 | 5.25 |
+| 512 | 362.8 | 710.3 | 467.2 | 1215 | 2084 | 1.96 | 1.29 | 3.35 | 5.75 |
+| 1024 | 855.3 | 1530 | 1086 | 2654 | 4267 | 1.79 | 1.27 | 3.10 | 4.99 |
+| 2048 | 1951 | 3556 | 2621 | 6081 | 10227 | 1.82 | 1.34 | 3.12 | 5.24 |
+| 4096 | 4530 | 8335 | 6290 | 14358 | 23336 | 1.84 | 1.39 | 3.17 | 5.15 |
+| 8192 | 11531 | 19161 | 19086 | 33116 | 51648 | 1.66 | 1.66 | 2.87 | 4.48 |
+| 16384 | 24431 | 40339 | 41490 | 75416 | 104778 | 1.65 | 1.70 | 3.09 | 4.29 |
+| 32768 | 51405 | 87156 | 91970 | 158966 | 234557 | 1.70 | 1.79 | 3.09 | 4.56 |
+| 65536 | 134502 | 200795 | 217772 | 364579 | 510007 | 1.49 | 1.62 | 2.71 | 3.79 |
+| 131072 | 355474 | 482570 | 615795 | 1025818 | 1259966 | 1.36 | 1.73 | 2.89 | 3.54 |
+| 262144 | 806249 | 1064157 | 1391384 | 2254765 | 2587401 | 1.32 | 1.73 | 2.80 | 3.21 |
+| 524288 | 1678925 | 2244860 | 7821413 | 4680275 | 5664419 | 1.34 | 4.66 | 2.79 | 3.37 |
+| 1048576 | 3722387 | 5085460 | 16320123 | 11973013 | 11764916 | 1.37 | 4.38 | 3.22 | 3.16 |
+<!-- end -->
+
+</details>
+
 ### Intel Core i5-9600K (Skylake), AVX2
 
 <picture>
@@ -286,26 +333,26 @@ they have code for it.
 <!-- results:intel -->
 | n | OneFFT | FFTW | FFmpeg | PFFFT | vs FFTW | vs FFmpeg | vs PFFFT |
 |--:|--:|--:|--:|--:|--:|--:|--:|
-| 2 | 2.0 | 6.0 | 1.8 | - | 3.00 | 0.90 | - |
-| 4 | 2.8 | 6.5 | 2.4 | - | 2.32 | 0.86 | - |
-| 8 | 7.3 | 12.0 | 5.7 | - | 1.64 | 0.78 | - |
-| 16 | 7.4 | 24.1 | 11.6 | 33.7 | 3.26 | 1.57 | 4.55 |
-| 32 | 14.0 | 21.9 | 21.5 | 46.4 | 1.56 | 1.54 | 3.31 |
-| 64 | 39.5 | 41.2 | 52.9 | 109.0 | 1.04 | 1.34 | 2.76 |
-| 128 | 70.4 | 67.7 | 106.2 | 215.1 | 0.96 | 1.51 | 3.06 |
-| 256 | 145.4 | 136.3 | 240.6 | 417.1 | 0.94 | 1.65 | 2.87 |
-| 512 | 328.0 | 291.7 | 511.5 | 920.8 | 0.89 | 1.56 | 2.81 |
-| 1024 | 683.9 | 664.7 | 1138 | 1927 | 0.97 | 1.66 | 2.82 |
-| 2048 | 1595 | 1551 | 2695 | 4687 | 0.97 | 1.69 | 2.94 |
-| 4096 | 4353 | 3990 | 6333 | 11274 | 0.92 | 1.45 | 2.59 |
-| 8192 | 8824 | 11371 | 16068 | 25441 | 1.29 | 1.82 | 2.88 |
-| 16384 | 19583 | 26499 | 35949 | 54309 | 1.35 | 1.84 | 2.77 |
-| 32768 | 44906 | 67506 | 84453 | 125816 | 1.50 | 1.88 | 2.80 |
-| 65536 | 96871 | 177583 | 190030 | 261951 | 1.83 | 1.96 | 2.70 |
-| 131072 | 211784 | 353387 | 398592 | 566408 | 1.67 | 1.88 | 2.67 |
-| 262144 | 456699 | 724082 | 840236 | 1218783 | 1.59 | 1.84 | 2.67 |
-| 524288 | 1139242 | 3731023 | 2148882 | 3134970 | 3.28 | 1.89 | 2.75 |
-| 1048576 | 2919645 | 8346325 | 8577686 | 9414169 | 2.86 | 2.94 | 3.22 |
+| 2 | 2.0 | 5.9 | 1.5 | - | 2.95 | 0.75 | - |
+| 4 | 2.8 | 6.9 | 2.2 | - | 2.46 | 0.79 | - |
+| 8 | 7.0 | 11.6 | 5.7 | - | 1.66 | 0.81 | - |
+| 16 | 7.4 | 24.6 | 11.6 | 31.6 | 3.32 | 1.57 | 4.27 |
+| 32 | 14.0 | 23.4 | 22.2 | 46.4 | 1.67 | 1.59 | 3.31 |
+| 64 | 36.1 | 35.4 | 51.8 | 105.3 | 0.98 | 1.43 | 2.92 |
+| 128 | 67.4 | 64.6 | 105.2 | 219.6 | 0.96 | 1.56 | 3.26 |
+| 256 | 142.4 | 136.6 | 237.5 | 425.1 | 0.96 | 1.67 | 2.99 |
+| 512 | 317.5 | 312.4 | 508.0 | 920.2 | 0.98 | 1.60 | 2.90 |
+| 1024 | 684.5 | 648.1 | 1165 | 1871 | 0.95 | 1.70 | 2.73 |
+| 2048 | 1576 | 1532 | 2560 | 4482 | 0.97 | 1.62 | 2.84 |
+| 4096 | 3803 | 3601 | 6171 | 10690 | 0.95 | 1.62 | 2.81 |
+| 8192 | 8728 | 11102 | 14892 | 24163 | 1.27 | 1.71 | 2.77 |
+| 16384 | 19374 | 26721 | 35534 | 53057 | 1.38 | 1.83 | 2.74 |
+| 32768 | 45276 | 69364 | 84821 | 129869 | 1.53 | 1.87 | 2.87 |
+| 65536 | 96833 | 171633 | 191130 | 252980 | 1.77 | 1.97 | 2.61 |
+| 131072 | 209243 | 385388 | 401638 | 625372 | 1.84 | 1.92 | 2.99 |
+| 262144 | 459237 | 732377 | 841954 | 1157209 | 1.59 | 1.83 | 2.52 |
+| 524288 | 1134748 | 3718173 | 2246893 | 3082268 | 3.28 | 1.98 | 2.72 |
+| 1048576 | 3007179 | 8445645 | 8539022 | 9283227 | 2.81 | 2.84 | 3.09 |
 <!-- end -->
 
 </details>
@@ -424,10 +471,11 @@ SSE. They were not tuned.
   size on the Cortex-X4, behind at most on Zen 2); FFTW's patient planner picks large generated
   codelets there that need very few passes.
 * With AVX-512, OneFFT is ahead of FFTW (which has AVX-512 codelets) at every size, also between
-  64 and 4096 points: by 1.24 to 1.5 times there on Zen 5 and by 1.05 to 1.17 times on Zen 4.
-  Against its own AVX2 kernels on the same machine it is 1.45 to 2.1 times faster on Zen 5 from
-  32 points up, and 1.1 to 1.27 times on Zen 4 from 64 points up; a 512 bit operation is two 256
-  bit operations on Zen 4.
+  64 and 4096 points: by 1.24 to 1.5 times there on Zen 5, by 1.2 to 1.5 times on Cascade
+  Lake and by 1.05 to 1.17 times on Zen 4. Against its own AVX2 kernels on the same machine it
+  is 1.45 to 2.1 times faster on Zen 5 from 32 points up, 1.3 to 2.0 times on Cascade Lake
+  (1.7 to 2.0 times from 64 to 4096 points, 1.3 to 1.7 times above), and 1.1 to 1.27 times on
+  Zen 4 from 64 points up; a 512 bit operation is two 256 bit operations on Zen 4.
 * The order in which the first pass goes through its butterflies decides large transforms on
   some cores (see "Decisions and their effect"). The M2 used to be the exception at the top,
   with FFTW up to 16% faster between 2^15 and 2^18 points; with the first pass writing in
@@ -438,6 +486,43 @@ SSE. They were not tuned.
   not have to split and interleave.
 * The 2021 proof of concept in `reference/` takes 6.9 us for 1024 points on the Pixel 3a, 6.6 us
   on the A50, 2.1 us on the S24 and 1.5 us on the M2: 1.04 to 1.9 times the time of OneFFT.
+
+### The dip at 64 points
+
+Several curves dip at 64 points: OneFFT with AVX2 (on Skylake and Zen 2, and its AVX2 kernels
+on Zen 4, Zen 5 and Cascade Lake) and with NEON on the Cortex-X4, and FFmpeg on the Zen cores.
+This is not the effect of where the buffers are (see Setup), which showed on Zen 4 (in FFTW
+at 64 points and in OneFFT at 128) and by a few percent on Cascade Lake:
+
+* The time for 64 points does not depend on the position of the output buffer in its page.
+  With the buffer at 0, 64, 512, 1024, 2048, 3072 and 4032 bytes OneFFT takes 25.5 to 26.3 ns
+  with AVX2 on Zen 5, 41.3 to 42.0 ns on Zen 2, 44.7 to 45.5 ns on the Cortex-X4 and 34.9 to
+  36.4 ns on the M2, and FFmpeg 49.5 to 49.9 ns on Zen 5. Skylake and Cascade Lake vary more
+  from run to run than with the position (36 to 40 and 46 to 48 ns).
+* The phones and Skylake were first measured with buffers wherever the allocator put them.
+  The tables above are from new runs with fixed buffers and differ from the first ones by a
+  few percent, at 64 points by at most 4% (Skylake 9%).
+
+It is the step from a kernel to passes. Up to 32 points a transform is one kernel that keeps
+everything in registers. 64 points is the smallest size done in passes, and the size that gets
+the least out of each: with AVX2 three kernels (`f4`, `la2`, `lb`) for 6 index bits, while 128
+and 256 points transform 7 and 8 bits with three. The kernels themselves are as fast as at
+other sizes (`bench/passes.c` on the Cortex-X4: `f8` and `l8` take 22 and 46 cycles per
+butterfly at 64 points, 22 and 43 at 256), but splitting the input, interleaving the output
+and the kernel calls cost the same for fewer bits. In the unit of the charts OneFFT with AVX2
+is 18 to 25% below the level of 128 points on the x86 cores; with NEON, where 64 points are
+two kernels, 7% on the Cortex-X4, 6% on the M2 and not at all on the older cores, whose curves
+only stand out at 32 points.
+
+With AVX-512, 64 and 128 points are single kernels and those curves have no dip at 64. The same
+step is at 256 points there, the first size in passes (Cascade Lake: 5% below 128 points). A
+64 point kernel for AVX2 was not built: 8 complex vectors fill the 16 registers, so that the
+three lane exchanges would need memory for their intermediate results, which is most of what
+the passes cost. FFTW's 64 point codelet is as fast as the three passes on Skylake (35 against
+36 ns) and 7% faster on Zen 2 (38 against 40 ns).
+
+FFmpeg's dip on Zen 5 (50 ns for 64 points, 14 ns for 32; Zen 4 takes 42 ns) is in its own
+code: the processor executes 2.0 instructions per cycle there, against 3.8 at 32 points.
 
 ## What the cores can do
 
@@ -485,7 +570,7 @@ What follows:
 
 ### x86-64: 256 bit instructions per cycle
 
-| | Skylake | Zen 2 | Zen 3 |
+| | Skylake, Cascade Lake | Zen 2 | Zen 3 |
 |---|--:|--:|--:|
 | loads | 2 | 2 | 2 |
 | stores | 1 | 1 | 1 |
@@ -512,18 +597,22 @@ What follows:
 
 ### x86-64: 512 bit instructions per cycle
 
-| | Zen 4 | Zen 5 |
-|---|--:|--:|
-| loads | 1 | 2 |
-| stores | 0.5 | 1 |
-| additions | 1 | 2 |
-| multiplications, fused multiply-adds | 1 | 2 |
-| additions and multiplications together | 2 | 4 |
-| `unpck`, `shufps` | 1.5 | 4 |
-| `vshuff32x4` | 1 | 2 |
-| cycles for a load, two multiplications by a twiddle vector and a store: twiddle as memory operands / loaded into a register | 3.2 / 2.2 | 1.5 / 1.0 |
+| | Zen 4 | Zen 5 | Cascade Lake |
+|---|--:|--:|--:|
+| loads | 1 | 2 | 2 |
+| stores | 0.5 | 1 | 1 |
+| additions | 1 | 2 | 2 |
+| multiplications, fused multiply-adds | 1 | 2 | 2 |
+| additions and multiplications together | 2 | 4 | 2 |
+| `unpck`, `shufps` | 1.5 | 4 | 1 |
+| `vshuff32x4` | 1 | 2 | 1 |
+| shuffles and additions together | - | 4 | 2 |
+| cycles for a load, two multiplications by a twiddle vector and a store: twiddle as memory operands / loaded into a register | 3.2 / 2.2 | 1.5 / 1.0 | 1.9 / 1.4 |
 
-(`bench/uops_x86.c` built with `-DWIDE -mavx512f`.) What follows:
+(`bench/uops_x86.c` built with `-DWIDE -mavx512f`. The buffer it reads and the one it writes
+must not have the same offset in their pages: a load then waits for the stores before it, and
+the tests with loads and stores came out up to 1.8 times too slow on Cascade Lake.) What
+follows:
 
 * **Zen 4 executes a 512 bit operation as two of 256 bits.** It moves no more data per cycle
   than with AVX2, and stores one register every other cycle. What AVX-512 gives it is 32
@@ -550,6 +639,15 @@ What follows:
   19.2 cycles per butterfly, 13.3 without its twiddle multiplications, 12.9 without its
   butterflies, 13.5 without its exchanges, and 8.1 with loads and stores alone. Overlapping
   consecutive butterflies in the instruction stream (software pipelining) helps: 16.1 cycles.
+* **Cascade Lake has two units for everything.** All 512 bit additions, multiplications and
+  fused multiply-adds share them, and one of the two is also the only one that shuffles. Loads
+  and stores have units of their own. A kernel cannot take fewer cycles there than half its
+  arithmetic and shuffle operations, and the kernels reach 1.3 to 1.8 operations per cycle
+  ("Where the time goes"). What was done for the Zen cores is neither needed nor harmful:
+  with twiddles as memory operands instead of in registers, whole transforms are 0 to 3%
+  slower; the order of the instructions within a butterfly matters by 5 to 8% (the generator's
+  scheduling against none), but not for how many operations per cycle it schedules. The
+  kernels are therefore the same for all processors.
 * **Stores that miss the cache are handled one at a time, loads in parallel.** The radix 8
   first pass takes 27 cycles per butterfly on Zen 5 while everything is in the first level
   cache. At 2^17 points it takes 285 if it reads in order and writes its 16 cache lines to
@@ -601,6 +699,12 @@ loses against radix 8 from 8192 points up (by up to 25%: its 16 input and 16 out
 are a multiple of 4096 bytes apart then) and wins again by 3 to 10% when the data no longer
 fits the third level cache.
 
+That is so on the Zen cores. On Cascade Lake the radix 16 first pass is the faster one at every
+size: equal at 8192 points, 1 to 6% faster from 2^14 to 2^17 and 5 to 10% from 2^18 to 2^23
+(2^18 points: 875 to 792 us), so Intel processors always use it. Writing in order gains nothing
+there at any size, with AVX-512 or with AVX2 (AVX2: equal up to 2^19 points, 6 to 9% slower
+beyond).
+
 Tried and dropped:
 
 * **First pass reading with a stride** so that consecutive butterflies write next to each other
@@ -617,6 +721,9 @@ Tried and dropped:
 * **Loading the next butterfly's data an iteration ahead** without pipelining anything else: 3%.
 * **Splitting the interleaved input with two loads and register shuffles** instead of one load
   and two shuffles with a memory operand (AVX-512): no gain on Zen 5, slower on Zen 4.
+* **Kernels of their own for Intel (AVX-512):** twiddles as memory operands, and instruction
+  orders for two or four operations per cycle instead of three: nothing gained on Cascade Lake
+  (see "What the cores can do").
 * **Other pass structures with AVX-512:** radix 4 middle passes before the radix 8 ones instead
   of after, and 4 against 5 index bits for the last two passes where both need the same number
   of passes: within 2%, except at 2048 points, where radix 8 with `la2` is 5% faster than radix 4
@@ -655,13 +762,15 @@ The AVX-512 kernels, in cycles per butterfly while the data is in the first leve
 | loads (twiddles and constants included), stores | 72, 32 | 24, 16 | 30, 16 | 14, 8 | 32, 16 | 14, 8 | 14, 8 |
 | Zen 5, cycles | 61 | 27 | 32 | 11 to 13 | 50 | 17 | 16 |
 | Zen 4, cycles | 125 | 44 | 64 | 23 | 91 | 32 | 31 |
+| Cascade Lake, cycles | 113 | 56 | 57 | 21 | 74 | 32 | 29 |
 | Zen 5, cycles per vector and index bit | 0.95 | 1.1 | 1.3 | 1.5 | 2.1 | 2.1 | 2.0 |
 | Zen 4, cycles per vector and index bit | 2.0 | 1.8 | 2.7 | 2.9 | 3.8 | 4.0 | 3.9 |
+| Cascade Lake, cycles per vector and index bit | 1.8 | 2.3 | 2.4 | 2.6 | 3.1 | 4.0 | 3.7 |
 
 On Zen 4 the cycles are close to loads plus twice the stores: it is limited by memory
-operations. On Zen 5 they follow the operation count at about 3 per cycle. On both, the index
-bits in the lanes cost twice as much as the others, because every exchange is two shuffles per
-vector.
+operations. On Zen 5 they follow the operation count at about 3 per cycle, on Cascade Lake at
+1.3 to 1.8 per cycle, of the 2 that its units allow. On all three, the index bits in the lanes
+cost more than the others, because every exchange is two shuffles per vector.
 
 What would be needed to be substantially faster:
 
@@ -676,6 +785,8 @@ What would be needed to be substantially faster:
   the table above 15% on Zen 4 and 5% on Zen 5 there. Middle passes whose blocks are a single
   butterfly (the first one of every transform) load the same twiddles for every butterfly of a
   region; a variant that keeps them in registers would save 6 or 14 loads per butterfly, about
-  5% of a transform on Zen 4. And nothing is known about Intel's processors with AVX-512, which
-  have one shuffle unit and share two units between additions and multiplications: the kernels
-  were tuned without one.
+  5% of a transform on Zen 4. Neither is likely to do much on Cascade Lake, whose kernels run
+  close to what its two arithmetic units allow whatever the loads and the number of passes:
+  there only fewer operations help, and a transform already needs few more than the
+  butterflies themselves (two shuffles per vector to split, two to interleave, eight for the
+  four exchanges).

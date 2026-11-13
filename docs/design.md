@@ -243,8 +243,10 @@ a turn are three shears each, like the twiddles of the AVX2 `la8`.
 
 Radix 16 is the cheapest pass per index bit, but it reads 16 streams and writes 16 streams
 whose cache lines land in the same sets of the first level cache once the strides are multiples
-of 4096 bytes. It is used up to 4096 points, and again for transforms that do not fit the third
-level cache, where saving a pass over the data is worth more. In between, `f8` is faster.
+of 4096 bytes. On AMD's cores it is used up to 4096 points, and again for transforms that do
+not fit the third level cache, where saving a pass over the data is worth more; in between,
+`f8` is faster. Intel's Cascade Lake is as fast or faster with radix 16 at every size, and
+Intel processors always use it.
 
 **Complete transforms in registers.** For 32, 64 and 128 points the partners of the exchanges
 are not all there at the start: 64 points have two index bits across the registers, and the
@@ -254,8 +256,8 @@ shuffles finds two that end with the lanes in output order; the one used exchang
 generates the three kernels from it: it tracks which output bits select a register and which sit
 in which lane bit, and derives every twiddle vector from that.
 
-**What the kernels are tuned for.** Measured on Zen 4 and Zen 5
-([measurements.md](measurements.md)); no Intel processor with AVX-512 was at hand.
+**What the kernels are tuned for.** Measured on Zen 4, Zen 5 and Intel's Cascade Lake
+([measurements.md](measurements.md)).
 
 * *Loads.* Zen 5 loads two 512 bit registers per cycle and Zen 4 one, and every memory operand
   is a load, an embedded broadcast included. A twiddle is used two or four times, so twiddles
@@ -275,6 +277,11 @@ in which lane bit, and derives every twiddle vector from that.
   a 512 bit store every other cycle. Its gain over the AVX2 kernels (1.1 to 1.27 times) comes
   from the 32 registers: fewer passes, twiddles in registers. Zen 5 has the full width: 1.45 to
   2.1 times the AVX2 kernels.
+* *Cascade Lake has two units* that all 512 bit arithmetic shares, one of which is also the
+  only one that shuffles. Its kernels are limited by their number of operations and run at 1.3
+  to 1.8 of the 2 per cycle. Twiddles in registers or as memory operands, and scheduling for
+  more or fewer operations per cycle, make no difference there, so it runs the same kernels:
+  1.3 to 2.0 times its AVX2 kernels (at one frequency for both; turbo was off).
 
 ## Large transforms
 
@@ -299,8 +306,8 @@ call over the whole output. Beyond that:
   The plans
   therefore write in order on Apple platforms and on AMD processors, for the sizes that
   the cache size reported by the system or the processor allows (`onefft_neon_ordered` and
-  `onefft_x86_tuning` in `onefft.c`), and read in order everywhere else: Intel's Skylake, the
-  one Intel core measured, gains nothing from writing in order and loses 25% at large sizes.
+  `onefft_x86_tuning` in `onefft.c`), and read in order everywhere else: Intel's Skylake and
+  Cascade Lake gain nothing from writing in order and lose up to 25% at large sizes.
   Prefetching the scattered lines, for reading or for writing, gained nothing anywhere.
 * The last pass walks 8 (4) streams and the twiddle table in order.
 
