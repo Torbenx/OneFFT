@@ -32,12 +32,12 @@ and imaginary arrays and is given those (the conversion is not timed, which favo
 `scripts/third_party.sh` builds the libraries and `scripts/build_bench.sh` the benchmark.
 Compilers: Clang 18 (Android NDK r27c), Apple Clang 21, GCC 15.
 
-Zen 4, Zen 5 and Zen 2 were measured with the input buffer at the start of a page and the
-output buffer 2048 bytes behind one. Where the two sit relative to each other matters for small
-transforms on Zen 4: with the same offset in their pages, loads of the next transform wait for
-stores of the previous one, and FFTW takes 56 instead of 29 ns for 64 points, OneFFT 56 instead
-of 47 ns for 128. The other machines were measured earlier, with buffers wherever the allocator
-put them; the Zen 3 and Skylake servers were not available again.
+Zen 4, Zen 5, Zen 2 and the M2 were measured with the input buffer at the start of a page and
+the output buffer 2048 bytes behind one. Where the two sit relative to each other matters for
+small transforms on Zen 4: with the same offset in their pages, loads of the next transform wait
+for stores of the previous one, and FFTW takes 56 instead of 29 ns for 64 points, OneFFT 56
+instead of 47 ns for 128. The phones, Skylake and Zen 3 were measured earlier, with buffers
+wherever the allocator put them (the Zen 3 server was not available again).
 
 ## Results
 
@@ -588,6 +588,9 @@ The same change of the first pass on AArch64, 2^16 and 2^18 points: Apple M2 143
 638 to 387 us (used on Apple platforms while the data fits the second level cache of the
 performance cores, 16 MiB on the M2); Cortex-X4 108 to 116 us and 515 to 627 us; Cortex-A73
 0.93 to 1.48 ms and 4.8 to 7.8 ms; Kryo 360 0.83 to 1.47 ms and 4.4 to 7.4 ms (not used there).
+Intel's Skylake (i5-9600K, AVX2) is 1 to 2% slower writing in order from 2^13 to 2^18 points and
+23 to 30% slower at 2^19 and 2^20: it reads in order, as does every x86 processor that is not
+AMD's.
 
 The order of the first pass and the sizes with a radix 16 first pass depend on the processor's
 caches. Writing in order stops paying off when input and output together exceed a quarter of

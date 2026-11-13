@@ -11286,8 +11286,8 @@ static size_t onefft_x86_middle(onefft_plan *plan, float *memory, size_t floats,
  * lines. Stores that miss the cache are handled one at a time by AMD's cores, loads in
  * parallel: writing in order is 3 to 15% faster on Zen 2 and Zen 4 and up to twice as fast on
  * Zen 5, as long as input and output fit a part of the third level cache. Beyond that reading
- * in order is faster. Processors that do not report that cache the AMD way (all others, none
- * of which was measured) read in order.
+ * in order is faster. Processors that do not report that cache the AMD way read in order:
+ * Intel's Skylake, the only one of them measured, gains nothing from writing in order.
  *
  * AVX-512 has a radix 16 first pass. It reads and writes 16 streams whose cache lines compete
  * for the same places of the first level cache when the transform is large, so that the radix 8

@@ -299,9 +299,9 @@ call over the whole output. Beyond that:
   The plans
   therefore write in order on Apple platforms and on AMD processors, for the sizes that
   the cache size reported by the system or the processor allows (`onefft_neon_ordered` and
-  `onefft_x86_tuning` in `onefft.c`), and read in order everywhere else, including x86
-  processors that were not measured. Prefetching the scattered lines, for reading or for
-  writing, gained nothing anywhere.
+  `onefft_x86_tuning` in `onefft.c`), and read in order everywhere else: Intel's Skylake, the
+  one Intel core measured, gains nothing from writing in order and loses 25% at large sizes.
+  Prefetching the scattered lines, for reading or for writing, gained nothing anywhere.
 * The last pass walks 8 (4) streams and the twiddle table in order.
 
 ## Why not ...

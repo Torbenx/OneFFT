@@ -78,7 +78,8 @@ Open:
 * The first pass writing in order was measured on Zen 2, Zen 4, Zen 5 and the M2 (faster, in
   use) and on the three phones (slower, not used). Zen 3 gets it by the same rule as the other
   AMD cores, unmeasured: the EPYC 7443P was no longer available. Intel processors read in
-  order, unmeasured as well: the i5-9600K was not reachable when this was found.
+  order: Skylake (i5-9600K) gains nothing from writing in order; newer Intel cores were not
+  measured.
 * Between 64 and 4096 points FFTW with patient planning is still up to 14% faster with AVX2 and
   NEON on some machines (see docs/measurements.md); Apple's vDSP is 1.1 to 1.7 times faster on
   the M2. Ideas that were not tried: vendor specific AVX2 kernels (the in-place kernels are
