@@ -24,13 +24,13 @@
 
 #if defined(__x86_64__) && !defined(ONEFFT_NO_SIMD)
 #define ONEFFT_X86 1
+#include <cpuid.h>
 #include "onefft_sse2.inc"
 #ifndef ONEFFT_NO_AVX2
 #define ONEFFT_AVX2 1
 #include "onefft_avx2.inc"
 #ifndef ONEFFT_NO_AVX512
 #define ONEFFT_AVX512 1
-#include <cpuid.h>
 #include "onefft_avx512.inc"
 #endif
 #endif
@@ -588,6 +588,65 @@ static size_t onefft_x86_middle(onefft_plan *plan, float *memory, size_t floats,
     return floats;
 }
 
+/* Choices that depend on the transform size and on the processor. All sizes are log2 of the
+ * number of points. docs/measurements.md has the numbers behind them.
+ *
+ * The first pass moves every vector to its final position, which is bit reversed. It handles
+ * its butterflies in the order of the input, and then writes to scattered cache lines once the
+ * data exceeds the first level cache, or in the order of the output, and then reads scattered
+ * lines. Stores that miss the cache are handled one at a time by AMD's cores, loads in
+ * parallel: writing in order is 3 to 15% faster on Zen 2 and Zen 4 and up to twice as fast on
+ * Zen 5, as long as input and output fit a part of the third level cache. Beyond that reading
+ * in order is faster. Processors that do not report that cache the AMD way (all others, none
+ * of which was measured) read in order.
+ *
+ * AVX-512 has a radix 16 first pass. It reads and writes 16 streams whose cache lines compete
+ * for the same places of the first level cache when the transform is large, so that the radix 8
+ * pass is faster then. When the data does not fit the third level cache either, a pass over it
+ * costs more than that and radix 16 is used again, because it saves a pass. */
+typedef struct {
+    unsigned char f16_to, f16_from;         /* AVX-512: radix 16 up to and from these sizes, radix 8 between */
+    unsigned char ordered_from, ordered_to; /* sizes whose first pass writes in order */
+} onefft_x86_tuning;
+
+#ifdef ONEFFT_DEVELOPER
+static const onefft_x86_tuning *onefft_developer_tuning; /* overrides the choice below */
+#endif
+
+static onefft_x86_tuning onefft_x86_tune(unsigned lane_bits) {
+#ifdef ONEFFT_DEVELOPER
+    if (onefft_developer_tuning) return *onefft_developer_tuning;
+#endif
+#ifdef ONEFFT_X86_TUNING /* the four numbers, for tests: -DONEFFT_X86_TUNING=99,0,99,0 */
+    static const onefft_x86_tuning fixed = {ONEFFT_X86_TUNING};
+    (void)lane_bits;
+    return fixed;
+#else
+    onefft_x86_tuning tuning = {12, 22, 99, 0};
+    unsigned eax = 0, ebx = 0, ecx = 0, edx = 0, family = 0;
+    if (__get_cpuid(1, &eax, &ebx, &ecx, &edx)) family = ((eax >> 8) & 15) + ((eax >> 20) & 255);
+    /* The third level cache that a core has access to, from AMD's list of caches. */
+    uint64_t bytes = 0;
+    for (unsigned i = 0; i < 8 && __get_cpuid_count(0x8000001d, i, &eax, &ebx, &ecx, &edx) && (eax & 31); i++) {
+        if (((eax >> 5) & 7) == 3) {
+            bytes = (uint64_t)((ebx >> 22) + 1) * (((ebx >> 12) & 1023) + 1) * ((ebx & 4095) + 1) * ((uint64_t)ecx + 1);
+        }
+    }
+    if (bytes < ((uint64_t)1 << 20)) return tuning;
+    unsigned cache = 20; /* log2 of its size, rounded down */
+    while (bytes >> (cache + 1)) cache++;
+    /* A transform of 2^k points works on 2^(k+4) bytes: it writes in order while that is at
+     * most a quarter of the cache (half on Zen 5 and later, but never beyond what the TLB of
+     * these cores covers). */
+    int zen5 = family >= 0x1a;
+    unsigned limit = zen5 ? 20 : 19, to = cache - (zen5 ? 5 : 6);
+    tuning.ordered_from = lane_bits == 4 ? 14 : 13;
+    tuning.ordered_to = (unsigned char)(to < limit ? to : limit);
+    tuning.f16_from = (unsigned char)(cache - 4);
+    return tuning;
+#endif
+}
+
 static size_t onefft_x86_plan(onefft_plan *plan, float *memory, const onefft_x86_kernels *kernels) {
     unsigned log2n = plan->log2n, lane_bits = kernels->lane_bits;
     int inverse = plan->inverse, avx2 = lane_bits == 3;
@@ -619,16 +678,20 @@ static size_t onefft_x86_plan(onefft_plan *plan, float *memory, const onefft_x86
     /* First pass. Its butterflies count through the remaining index bits above the lanes. The
      * top `kept` of those bits stay where they are: their results are what the last passes
      * exchange with the lanes, unless the first pass transforms those bits itself. The others
-     * are bit reversed. */
+     * are bit reversed. The butterflies are handled in the order of the input or in the order
+     * of the output, see onefft_x86_tuning. */
     unsigned count_bits = log2n - first_bits - lane_bits, kept = lane_bits > first_bits ? lane_bits - first_bits : 0;
     size_t first_count = (size_t)1 << count_bits;
     if (memory) {
         uint32_t *table = (uint32_t *)(memory + floats);
         unsigned low_bits = count_bits - kept;
+        onefft_x86_tuning tuning = onefft_x86_tune(lane_bits);
+        int ordered = log2n >= tuning.ordered_from && log2n <= tuning.ordered_to;
         for (size_t a = 0; a < first_count; a++) {
             size_t low = onefft_bit_reverse(a & (((size_t)1 << low_bits) - 1), low_bits);
-            table[2 * a] = (uint32_t)(a << lane_bits);
-            table[2 * a + 1] = (uint32_t)(((a >> low_bits << low_bits) | low) << lane_bits);
+            size_t b = (a >> low_bits << low_bits) | low; /* the mapping is its own inverse */
+            table[2 * a] = (uint32_t)((ordered ? b : a) << lane_bits);
+            table[2 * a + 1] = (uint32_t)((ordered ? a : b) << lane_bits);
         }
         plan->first = first_bits == 2 ? kernels->f4[inverse] : kernels->f_odd[inverse];
         plan->first_table = table;
@@ -781,40 +844,6 @@ static const onefft_x86_kernels onefft_avx512_kernels = {
 /* The element of 16 consecutive values that each lane holds. */
 static const unsigned char onefft_avx512_element[16] = {0, 1, 8, 9, 2, 3, 10, 11, 4, 5, 12, 13, 6, 7, 14, 15};
 
-/* Choices that depend on the transform size and on the processor. All sizes are log2 of the
- * number of points. docs/measurements.md has the numbers behind them. */
-typedef struct {
-    unsigned char f16_to, f16_from;         /* radix 16 first pass up to and from these sizes, radix 8 between */
-    unsigned char ordered_from, ordered_to; /* sizes whose first pass writes in order instead of reading in order */
-} onefft_avx512_tuning;
-
-#ifdef ONEFFT_DEVELOPER
-static const onefft_avx512_tuning *onefft_developer_tuning; /* overrides the choice below */
-#endif
-
-static onefft_avx512_tuning onefft_avx512_tune(void) {
-#ifdef ONEFFT_DEVELOPER
-    if (onefft_developer_tuning) return *onefft_developer_tuning;
-#endif
-#ifdef ONEFFT_AVX512_TUNING /* the four numbers, for tests: -DONEFFT_AVX512_TUNING=12,13,13,30 */
-    static const onefft_avx512_tuning fixed = {ONEFFT_AVX512_TUNING};
-    return fixed;
-#else
-    /* Zen 5 handles one store that misses the cache at a time, but many loads: beyond the
-     * first level cache it is up to 40% faster if the first pass writes in order. Zen 4
-     * gains a few percent. Both lose once the data exceeds what their TLB covers. Other
-     * processors with AVX-512 have not been measured and keep the conventional order. */
-    static const onefft_avx512_tuning zen5 = {12, 21, 14, 20}, zen4 = {12, 22, 14, 19}, other = {12, 22, 99, 0};
-    unsigned eax = 0, ebx = 0, ecx = 0, edx = 0;
-    if (!__get_cpuid(0, &eax, &ebx, &ecx, &edx) || ebx != 0x68747541 || edx != 0x69746e65 || ecx != 0x444d4163) {
-        return other; /* not "AuthenticAMD" */
-    }
-    __get_cpuid(1, &eax, &ebx, &ecx, &edx);
-    unsigned family = ((eax >> 8) & 15) + ((eax >> 20) & 255);
-    return family >= 0x1a ? zen5 : zen4;
-#endif
-}
-
 static size_t onefft_avx512_plan(onefft_plan *plan, float *memory) {
     const onefft_x86_kernels *kernels = &onefft_avx512_kernels;
     unsigned log2n = plan->log2n;
@@ -838,7 +867,7 @@ static size_t onefft_avx512_plan(onefft_plan *plan, float *memory) {
      * 3 or 2 bits each, and the two last passes 5 or 4 together: whichever needs fewer middle
      * passes, and among equals 4 if the data fits the first level cache and 5 otherwise. (One
      * bit cannot be left to the middle passes.) */
-    onefft_avx512_tuning tuning = onefft_avx512_tune();
+    onefft_x86_tuning tuning = onefft_x86_tune(4);
     unsigned first_bits = log2n <= tuning.f16_to || log2n >= tuning.f16_from || log2n < 10 ? 4 : 3;
     unsigned special = first_bits == 3 ? 3 : 0;
     unsigned rest = log2n - first_bits - special - 4; /* bits of the middle passes if the last take 4 */
@@ -847,10 +876,7 @@ static size_t onefft_avx512_plan(onefft_plan *plan, float *memory) {
 
     /* First pass. It counts through the index bits between its own and the lanes and writes to
      * the bit reversed position; after the radix 8 pass the top one of those bits, n-4, keeps
-     * its place instead. It handles its butterflies either in the order of the input or in the
-     * order of the output, and reads or writes scattered cache lines accordingly once the data
-     * exceeds the first level cache. Which is better depends on the size: see
-     * docs/measurements.md. */
+     * its place instead. */
     unsigned count_bits = log2n - first_bits - 4, low_bits = count_bits - (4 - first_bits);
     size_t first_count = (size_t)1 << count_bits;
     if (memory) {

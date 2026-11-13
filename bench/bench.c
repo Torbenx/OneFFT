@@ -1,7 +1,10 @@
 /*
  * Benchmark and accuracy harness.
  *
- *   bench [-i impl[,impl...]] [-a min_log2] [-b max_log2] [-t ms_per_sample] [-s samples]
+ *   bench [-i impl[,impl...]] [-a min_log2] [-b max_log2] [-t ms_per_sample] [-s samples] [-o offset]
+ *
+ * The input buffer starts at a page boundary and the output buffer `offset` bytes after one
+ * (default 2048, a multiple of 64).
  *
  * Prints one line per implementation and size:
  *   <impl> <n> <ns per transform> <ns / (n log2 n)> <relative rms error>
@@ -52,6 +55,12 @@ static double now_ns(void) {
     return (double)ts.tv_sec * 1e9 + (double)ts.tv_nsec;
 }
 
+static void *alloc_pages(size_t bytes) {
+    void *p = NULL;
+    if (posix_memalign(&p, 4096, bytes)) abort();
+    return p;
+}
+
 static void *alloc64(size_t bytes) {
     void *p = NULL;
     if (posix_memalign(&p, 64, bytes ? bytes : 64)) abort();
@@ -95,19 +104,25 @@ int main(int argc, char **argv) {
     const char *filter = NULL;
     int min_log2 = 1, max_log2 = 16, samples = 20;
     double sample_ms = 5.0;
+    size_t out_offset = 2048;
     for (int i = 1; i + 1 < argc; i += 2) {
         if (!strcmp(argv[i], "-i")) filter = argv[i + 1];
         else if (!strcmp(argv[i], "-a")) min_log2 = atoi(argv[i + 1]);
         else if (!strcmp(argv[i], "-b")) max_log2 = atoi(argv[i + 1]);
         else if (!strcmp(argv[i], "-t")) sample_ms = atof(argv[i + 1]);
         else if (!strcmp(argv[i], "-s")) samples = atoi(argv[i + 1]);
+        else if (!strcmp(argv[i], "-o")) out_offset = (size_t)atoi(argv[i + 1]);
         else { fprintf(stderr, "unknown option %s\n", argv[i]); return 2; }
     }
 
     for (int lg = min_log2; lg <= max_log2; lg++) {
         size_t n = (size_t)1 << lg;
-        float *in = alloc64(n * 2 * sizeof(float));
-        float *out = alloc64(n * 2 * sizeof(float));
+        /* Both buffers start at a fixed place of their 4 KiB page. Otherwise the result depends
+         * on where the allocator happens to put them: loads from the input wait for earlier
+         * stores to the output on many cores if the two have the same offset in their page. */
+        float *in_base = alloc_pages(n * 2 * sizeof(float) + 4096);
+        float *out_base = alloc_pages(n * 2 * sizeof(float) + 4096);
+        float *in = in_base, *out = (float *)((char *)out_base + out_offset);
         double *ref = alloc64(n * 2 * sizeof(double));
         for (size_t i = 0; i < 2 * n; i++) ref[i] = in[i] = rng_float();
         fft_double(ref, n);
@@ -151,7 +166,7 @@ int main(int argc, char **argv) {
             fflush(stdout);
             impl->destroy(plan);
         }
-        free(in), free(out), free(ref);
+        free(in_base), free(out_base), free(ref);
     }
     return 0;
 }

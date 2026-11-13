@@ -47,11 +47,15 @@ if(ONEFFT_BUILD_TESTS)
         add_test(NAME ${name} COMMAND ${name} 18)
     endfunction()
     onefft_add_test(test_onefft src/onefft.c)
-    # AVX-512: the plans with each of the two first passes at all sizes (see onefft_avx512_tuning)
-    onefft_add_test(test_onefft_avx512_f16 src/onefft.c "ONEFFT_AVX512_TUNING=99,0,99,0")
-    onefft_add_test(test_onefft_avx512_f8 src/onefft.c "ONEFFT_AVX512_TUNING=9,99,10,99")
+    # x86-64: the tunings (onefft_x86_tuning in onefft.c) select what otherwise depends on the
+    # processor: the AVX-512 plans with each of their first passes at all sizes, and both orders
+    # of the first pass.
+    onefft_add_test(test_onefft_f16 src/onefft.c "ONEFFT_X86_TUNING=99,0,99,0")
+    onefft_add_test(test_onefft_f8_ordered src/onefft.c "ONEFFT_X86_TUNING=9,99,0,99")
     onefft_add_test(test_onefft_no_avx512 src/onefft.c ONEFFT_NO_AVX512)
+    onefft_add_test(test_onefft_no_avx512_ordered src/onefft.c ONEFFT_NO_AVX512 "ONEFFT_X86_TUNING=0,0,0,99")
     onefft_add_test(test_onefft_no_avx2 src/onefft.c ONEFFT_NO_AVX2)
+    onefft_add_test(test_onefft_no_avx2_ordered src/onefft.c ONEFFT_NO_AVX2 "ONEFFT_X86_TUNING=0,0,0,99")
     onefft_add_test(test_onefft_portable src/onefft.c ONEFFT_NO_SIMD)
     # AArch64: both forms of the middle and last passes (the definitions do nothing elsewhere)
     onefft_add_test(test_onefft_neon_standard src/onefft.c ONEFFT_NEON_FMA=0)

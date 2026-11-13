@@ -176,12 +176,11 @@ def name(isa, kernel, inverse=False):
     return "onefft_%s_%s%s" % (isa, kernel, "i" * inverse)
 
 
-def first_pass(isa, radix, inverse, region_bits=None):
+def first_pass(isa, radix, inverse):
     k = Kernel(name(isa, "f%d" % radix, inverse),
                """First pass, radix %d. For each of the `count` entries (a, b) of `table`: reads %d interleaved
 vectors from in + 8*a + u*in_stride, transforms across them and writes output q as a split
-vector to out + 8*b + r*out_stride, where r is q with its bits reversed%s.""" % (
-                   radix, radix, "" if region_bits is None else " (and the lower two exchanged)"), isa, inverse)
+vector to out + 8*b + r*out_stride, where r is q with its bits reversed.""" % (radix, radix), isa, inverse)
     src_base = k.param("const float *", "in")
     dst_base = k.param("float *", "out")
     table = k.param("const uint32_t *", "table")
@@ -214,10 +213,8 @@ vector to out + 8*b + r*out_stride, where r is q with its bits reversed%s.""" % 
     ys = fft_plain(k, xs, half, in_place=in_place)
     bits = radix.bit_length() - 1
     for r in range(radix):
-        # Region r of the output takes the result whose low output bits, reversed, are r
-        # (AVX-512 orders the regions differently, see avx512_kernels.low_bits).
-        q = bit_reverse(r, bits) if region_bits is None else region_bits(r)
-        k.store_split(ys[q], Mem(dst))
+        # Region r of the output takes the result whose low output bits, reversed, are r.
+        k.store_split(ys[bit_reverse(r, bits)], Mem(dst))
         if r < radix - 1:
             k.gadd(dst, dst, out_stride)
     k.loop(count, top)

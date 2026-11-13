@@ -7,11 +7,13 @@
  * `radices` (AArch64 only) overrides the pass structure: the radix bits of the middle passes and
  * the last pass as digits, e.g. "10:2223" for a radix 4, 4, 4 middle and a radix 8 last pass.
  *
- * A leading argument "cache=<log2 bytes>" overrides ONEFFT_CACHE_BYTES_LOG2 of onefft.c, and
+ * Leading arguments: "plain=1" times the passes without restoring the data in between, on
+ * zeros: the cost of a kernel alone while its data is in the cache (it only makes sense for
+ * sizes that fit). "cache=<log2 bytes>" overrides ONEFFT_CACHE_BYTES_LOG2 of onefft.c, and
  * "shift=<bytes>" moves the input buffer relative to the output buffer (buffers with the same
- * offset in their 4 KiB page are the worst case for some cores). For the AVX-512 plans:
+ * offset in their 4 KiB page are the worst case for some cores). On x86-64,
  * "tuning=<f16_to>,<f16_from>,<ordered_from>,<ordered_to>" sets the size dependent choices, see
- * onefft_avx512_tuning in onefft.c.
+ * onefft_x86_tuning in onefft.c.
  * The total time of complete transforms is printed as well.
  */
 #define _POSIX_C_SOURCE 200809L
@@ -68,6 +70,8 @@ static void step_copy(const onefft_plan *p, const float *in, float *out, int ind
     (void)p, (void)in, (void)out, (void)index;
 }
 
+static int plain; /* no copy: the passes run on zeros, which stay zeros */
+
 /* Minimum time of memcpy(out, saved) + step. The copy keeps the data finite and identical. */
 static double time_step(step_fn *step, const onefft_plan *p, const float *in, float *out, const float *saved,
                         int index) {
@@ -77,7 +81,7 @@ static double time_step(step_fn *step, const onefft_plan *p, const float *in, fl
     for (int s = 0; s < 30; s++) {
         double t0 = now_ns();
         for (size_t i = 0; i < iters; i++) {
-            memcpy(out, saved, bytes);
+            if (!plain) memcpy(out, saved, bytes);
             step(p, in, out, index);
         }
         double dt = (now_ns() - t0) / (double)iters;
@@ -89,11 +93,12 @@ static double time_step(step_fn *step, const onefft_plan *p, const float *in, fl
 int main(int argc, char **argv) {
     size_t shift = 0; /* bytes between the page offsets of the input and the output buffer */
     for (; argc > 1 && strchr(argv[1], '='); argv++, argc--) {
+        if (!strncmp(argv[1], "plain=", 6)) plain = atoi(argv[1] + 6);
         if (!strncmp(argv[1], "cache=", 6)) onefft_tune_cache_log2 = (unsigned)atoi(argv[1] + 6);
         if (!strncmp(argv[1], "shift=", 6)) shift = (size_t)atoi(argv[1] + 6);
-#ifdef ONEFFT_AVX512
+#ifdef ONEFFT_X86
         if (!strncmp(argv[1], "tuning=", 7)) {
-            static onefft_avx512_tuning tuning;
+            static onefft_x86_tuning tuning;
             sscanf(argv[1] + 7, "%hhu,%hhu,%hhu,%hhu", &tuning.f16_to, &tuning.f16_from, &tuning.ordered_from,
                    &tuning.ordered_to);
             onefft_developer_tuning = &tuning;
@@ -126,11 +131,11 @@ int main(int argc, char **argv) {
             return 1;
         float *in_base = in;
         in = (float *)((char *)in + shift);
-        for (size_t i = 0; i < 2 * n; i++) in[i] = (float)((i * 2654435761u) & 0xffff) / 65536.0f - 0.5f;
+        for (size_t i = 0; i < 2 * n; i++) in[i] = plain ? 0.0f : (float)((i * 2654435761u) & 0xffff) / 65536.0f - 0.5f;
         step_first(p, in, out, 0);
         memcpy(saved, out, n * 8);
 
-        double copy = time_step(step_copy, p, in, out, saved, 0);
+        double copy = plain ? 0.0 : time_step(step_copy, p, in, out, saved, 0);
         double total = 0;
         printf("n=%zu (copy %.0f ns)\n", n, copy);
         double t = time_step(step_first, p, in, out, saved, 0) - copy;
