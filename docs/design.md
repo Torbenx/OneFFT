@@ -290,13 +290,17 @@ call over the whole output. Beyond that:
 * The first pass moves every vector to the bit reversed position. If it reads the input in
   order, it writes to scattered cache lines once the output exceeds the cache; if it handles
   its butterflies in the order of the output, it reads scattered lines instead. Only the table
-  that the kernel walks through differs. Which is faster depends on the core. On the AArch64
-  cores measured, reading in order is (writing in order was up to 60% slower on the older
-  phones). AMD's x86 cores handle one store that misses the cache at a time, but many loads:
-  there writing in order is 3 to 15% faster on Zen 2 and Zen 4 and up to twice as fast on Zen 5,
-  as long as input and output fit a part of the third level cache, and slower beyond. The x86
-  plans choose by the size of that cache (`onefft_x86_tuning` in `onefft.c`); processors that
-  were not measured read in order. Prefetching the scattered lines, for reading or for
+  that the kernel walks through differs. Which is faster depends on the core, and by a lot.
+  Apple's and AMD's cores handle stores that miss the cache more or less one at a time, but
+  many loads at once: writing in order is 1.4 to 1.7 times faster on the M2, up to twice as
+  fast on Zen 5 and 3 to 15% faster on Zen 2 and Zen 4, as long as input and output fit a
+  part of the last level cache, and slower beyond. The Cortex cores measured are slower with
+  it at every size (the Cortex-X4 by 7 to 25% up to 2^20 points, the older ones by up to 80%).
+  The plans
+  therefore write in order on Apple platforms and on AMD processors, for the sizes that
+  the cache size reported by the system or the processor allows (`onefft_neon_ordered` and
+  `onefft_x86_tuning` in `onefft.c`), and read in order everywhere else, including x86
+  processors that were not measured. Prefetching the scattered lines, for reading or for
   writing, gained nothing anywhere.
 * The last pass walks 8 (4) streams and the twiddle table in order.
 

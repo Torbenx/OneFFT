@@ -21,7 +21,9 @@ host)
     x86_64) variants=("" -DONEFFT_X86_TUNING=99,0,99,0 -DONEFFT_X86_TUNING=9,99,0,99 -DONEFFT_NO_AVX512
                       "-DONEFFT_NO_AVX512 -DONEFFT_X86_TUNING=0,0,0,99" -DONEFFT_NO_AVX2
                       "-DONEFFT_NO_AVX2 -DONEFFT_X86_TUNING=0,0,0,99" -DONEFFT_NO_SIMD) ;;
-    *) variants=("" -DONEFFT_NEON_FMA=0 -DONEFFT_NEON_FMA=1 -DONEFFT_NO_SIMD) ;; # both forms of the passes
+    # both forms of the passes and both orders of the first pass
+    *) variants=("" -DONEFFT_NEON_FMA=0 -DONEFFT_NEON_FMA=1 -DONEFFT_NEON_ORDERED=0 -DONEFFT_NEON_ORDERED=1
+                 -DONEFFT_NO_SIMD) ;;
     esac
     for variant in "${variants[@]}"; do
         ${CC:-cc} -O2 $warnings $variant -I"$root/include" "$root/tests/test_onefft.c" "$root/src/onefft.c" -lm -lpthread -o "$root/build/host/test_onefft"
@@ -36,8 +38,9 @@ host)
 *)
     cc=${ANDROID_NDK_HOME:-$root/.tools/android-ndk-r27c}/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android24-clang
     mkdir -p "$root/build/android-arm64"
-    for v in 0 1; do # both forms of the middle and last passes
-        "$cc" -O2 $warnings -DONEFFT_NEON_FMA=$v -I"$root/include" "$root/tests/test_onefft.c" "$root/src/onefft.c" -lm -o "$root/build/android-arm64/test_onefft"
+    # both forms of the middle and last passes, and the first pass writing in order
+    for variant in -DONEFFT_NEON_FMA=0 -DONEFFT_NEON_FMA=1 -DONEFFT_NEON_ORDERED=1; do
+        "$cc" -O2 $warnings $variant -I"$root/include" "$root/tests/test_onefft.c" "$root/src/onefft.c" -lm -o "$root/build/android-arm64/test_onefft"
         "$root/scripts/android_run.sh" "$target" "$root/build/android-arm64/test_onefft" "$@"
     done
     ;;

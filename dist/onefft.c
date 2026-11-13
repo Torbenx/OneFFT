@@ -25,6 +25,9 @@
 
 #if defined(__aarch64__) && !defined(ONEFFT_NO_SIMD)
 #define ONEFFT_NEON 1
+#ifdef __APPLE__
+#include <sys/sysctl.h>
+#endif
 /*
  * OneFFT AArch64 Advanced SIMD kernels.
  *
@@ -10972,6 +10975,7 @@ static void onefft_table_root(float *table, size_t lanes, size_t lane, uint64_t 
 
 #ifdef ONEFFT_DEVELOPER
 static const unsigned *onefft_developer_radices; /* overrides the pass structure, see below */
+static int onefft_developer_ordered = -1;        /* 0 or 1 overrides onefft_neon_ordered() */
 #endif
 
 /* The same for the kernels built from fused multiply-add butterflies, which take a twiddle
@@ -10997,6 +11001,37 @@ static void onefft_table_cos_tan(float *table, size_t lanes, size_t lane, uint64
 #define ONEFFT_NEON_FMA 0
 #endif
 #endif
+
+/* Whether the first pass of a transform of 2^log2n points handles its butterflies in the order
+ * of the output: it then writes in order and reads scattered cache lines, instead of reading in
+ * order and writing scattered lines (once the data exceeds the first level cache).
+ *
+ * Apple's cores are much faster that way while input and output fit their second level cache,
+ * the last one they have: the M2 by 10% at 2^14 points and by 29 to 40% from 2^15 to 2^20. The
+ * Cortex-X4 is 7 to 25% slower with it from 2^15 to 2^20 points, the Cortex-A73 and Kryo 360
+ * 20 to 80%. ONEFFT_NEON_ORDERED=0/1 overrides the choice for all sizes. */
+static int onefft_neon_ordered(unsigned log2n) {
+#ifdef ONEFFT_DEVELOPER
+    if (onefft_developer_ordered >= 0) return onefft_developer_ordered;
+#endif
+#if defined(ONEFFT_NEON_ORDERED)
+    (void)log2n;
+    return ONEFFT_NEON_ORDERED;
+#elif defined(__APPLE__)
+    /* The cache of the performance cores, where the system distinguishes them. The value is a
+     * 32 or 64 bit integer, depending on the name and the system. */
+    uint64_t cache = 0;
+    size_t size = sizeof(cache);
+    if (sysctlbyname("hw.perflevel0.l2cachesize", &cache, &size, NULL, 0) != 0 || cache == 0) {
+        cache = 0, size = sizeof(cache);
+        if (sysctlbyname("hw.l2cachesize", &cache, &size, NULL, 0) != 0) cache = 0;
+    }
+    return log2n >= 14 && log2n <= 40 && ((uint64_t)16 << log2n) <= cache;
+#else
+    (void)log2n;
+    return 0;
+#endif
+}
 
 static size_t onefft_neon_plan(onefft_plan *plan, float *memory) {
     unsigned log2n = plan->log2n;
@@ -11035,15 +11070,16 @@ static size_t onefft_neon_plan(onefft_plan *plan, float *memory) {
 #endif
 
     /* First pass: the butterfly that reads input vector a writes to the bit reversed position.
-     * The input is read in order. For large transforms the writes then go to scattered cache
-     * lines. Both alternatives that were tried are slower: reading with a stride so that
-     * consecutive butterflies write to neighbouring positions, and prefetching the lines. */
+     * The butterflies are handled in the order of the input or in the order of the output, see
+     * onefft_neon_ordered(). Prefetching the scattered lines did not help. */
     size_t first_count = n >> 5;
     if (memory) {
         uint32_t *table = (uint32_t *)(memory + floats);
+        int ordered = onefft_neon_ordered(log2n);
         for (size_t a = 0; a < first_count; a++) {
-            table[2 * a] = (uint32_t)(4 * a);
-            table[2 * a + 1] = (uint32_t)(8 * onefft_bit_reverse(a, log2n - 5));
+            size_t b = onefft_bit_reverse(a, log2n - 5); /* the mapping is its own inverse */
+            table[2 * a] = (uint32_t)(4 * (ordered ? b : a));
+            table[2 * a + 1] = (uint32_t)(8 * (ordered ? a : b));
         }
         plan->first = inverse ? onefft_neon_f8i : onefft_neon_f8;
         plan->first_table = table;

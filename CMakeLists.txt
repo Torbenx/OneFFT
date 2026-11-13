@@ -57,9 +57,12 @@ if(ONEFFT_BUILD_TESTS)
     onefft_add_test(test_onefft_no_avx2 src/onefft.c ONEFFT_NO_AVX2)
     onefft_add_test(test_onefft_no_avx2_ordered src/onefft.c ONEFFT_NO_AVX2 "ONEFFT_X86_TUNING=0,0,0,99")
     onefft_add_test(test_onefft_portable src/onefft.c ONEFFT_NO_SIMD)
-    # AArch64: both forms of the middle and last passes (the definitions do nothing elsewhere)
+    # AArch64: both forms of the middle and last passes and both orders of the first pass (the
+    # definitions do nothing elsewhere)
     onefft_add_test(test_onefft_neon_standard src/onefft.c ONEFFT_NEON_FMA=0)
     onefft_add_test(test_onefft_neon_fused src/onefft.c ONEFFT_NEON_FMA=1)
+    onefft_add_test(test_onefft_neon_in_order src/onefft.c ONEFFT_NEON_ORDERED=0)
+    onefft_add_test(test_onefft_neon_ordered src/onefft.c ONEFFT_NEON_ORDERED=1)
     onefft_add_test(test_onefft_dist dist/onefft.c)
 
     include(CheckLanguage)

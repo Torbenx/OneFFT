@@ -6,6 +6,8 @@
  *
  * `radices` (AArch64 only) overrides the pass structure: the radix bits of the middle passes and
  * the last pass as digits, e.g. "10:2223" for a radix 4, 4, 4 middle and a radix 8 last pass.
+ * A leading argument "ordered=0" or "ordered=1" (AArch64 only) sets whether the first pass
+ * writes in order.
  *
  * Leading arguments: "plain=1" times the passes without restoring the data in between, on
  * zeros: the cost of a kernel alone while its data is in the cache (it only makes sense for
@@ -94,6 +96,9 @@ int main(int argc, char **argv) {
     size_t shift = 0; /* bytes between the page offsets of the input and the output buffer */
     for (; argc > 1 && strchr(argv[1], '='); argv++, argc--) {
         if (!strncmp(argv[1], "plain=", 6)) plain = atoi(argv[1] + 6);
+#ifdef ONEFFT_NEON
+        if (!strncmp(argv[1], "ordered=", 8)) onefft_developer_ordered = atoi(argv[1] + 8);
+#endif
         if (!strncmp(argv[1], "cache=", 6)) onefft_tune_cache_log2 = (unsigned)atoi(argv[1] + 6);
         if (!strncmp(argv[1], "shift=", 6)) shift = (size_t)atoi(argv[1] + 6);
 #ifdef ONEFFT_X86

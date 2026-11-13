@@ -172,26 +172,26 @@ the time of OneFFT.
 <!-- results:m2 -->
 | n | OneFFT | FFTW | FFmpeg | PFFFT | vDSP | vs FFTW | vs FFmpeg | vs PFFFT | vs vDSP |
 |--:|--:|--:|--:|--:|--:|--:|--:|--:|--:|
-| 2 | 1.6 | 2.6 | 1.1 | - | - | 1.62 | 0.69 | - | - |
-| 4 | 1.9 | 3.7 | 1.1 | - | - | 1.95 | 0.58 | - | - |
-| 8 | 3.4 | 6.6 | 3.7 | - | - | 1.94 | 1.09 | - | - |
-| 16 | 6.9 | 14.6 | 8.6 | 17.7 | 11.2 | 2.12 | 1.25 | 2.57 | 1.62 |
-| 32 | 14.3 | 18.2 | 20.9 | 28.5 | 17.7 | 1.27 | 1.46 | 1.99 | 1.24 |
-| 64 | 34.9 | 34.5 | 50.0 | 57.7 | 34.5 | 0.99 | 1.43 | 1.65 | 0.99 |
-| 128 | 76.7 | 75.2 | 113.7 | 117.4 | 68.2 | 0.98 | 1.48 | 1.53 | 0.89 |
-| 256 | 166.6 | 157.3 | 257.3 | 234.8 | 203.7 | 0.94 | 1.54 | 1.41 | 1.22 |
-| 512 | 361.3 | 343.3 | 585.3 | 546.4 | 308.5 | 0.95 | 1.62 | 1.51 | 0.85 |
-| 1024 | 789.3 | 747.3 | 1307 | 1105 | 535.6 | 0.95 | 1.66 | 1.40 | 0.68 |
-| 2048 | 1714 | 1741 | 2890 | 2465 | 1022 | 1.02 | 1.69 | 1.44 | 0.60 |
-| 4096 | 3693 | 3791 | 6330 | 5172 | 2324 | 1.03 | 1.71 | 1.40 | 0.63 |
-| 8192 | 8176 | 9432 | 13891 | 13730 | 5332 | 1.15 | 1.70 | 1.68 | 0.65 |
-| 16384 | 20891 | 22211 | 32617 | 29727 | 11578 | 1.06 | 1.56 | 1.42 | 0.55 |
-| 32768 | 61312 | 57141 | 76906 | 67219 | 25023 | 0.93 | 1.25 | 1.10 | 0.41 |
-| 65536 | 142562 | 121406 | 166000 | 135812 | 63297 | 0.85 | 1.16 | 0.95 | 0.44 |
-| 131072 | 306125 | 257938 | 346625 | 300938 | 137312 | 0.84 | 1.13 | 0.98 | 0.45 |
-| 262144 | 637500 | 563375 | 1536000 | 623750 | 290250 | 0.88 | 2.41 | 0.98 | 0.46 |
-| 524288 | 1337500 | 2025500 | 3236000 | 1317500 | 660000 | 1.51 | 2.42 | 0.99 | 0.49 |
-| 1048576 | 2661000 | 4363000 | 6847000 | 2806000 | 2216000 | 1.64 | 2.57 | 1.05 | 0.83 |
+| 2 | 1.4 | 2.6 | 1.1 | - | - | 1.86 | 0.79 | - | - |
+| 4 | 1.9 | 3.8 | 1.2 | - | - | 2.00 | 0.63 | - | - |
+| 8 | 3.5 | 6.8 | 3.8 | - | - | 1.94 | 1.09 | - | - |
+| 16 | 6.9 | 15.0 | 8.6 | 17.8 | 11.2 | 2.17 | 1.25 | 2.58 | 1.62 |
+| 32 | 14.3 | 18.2 | 20.9 | 29.4 | 17.7 | 1.27 | 1.46 | 2.06 | 1.24 |
+| 64 | 35.9 | 35.5 | 50.0 | 58.7 | 34.6 | 0.99 | 1.39 | 1.64 | 0.96 |
+| 128 | 78.9 | 75.3 | 114.3 | 120.6 | 68.2 | 0.95 | 1.45 | 1.53 | 0.86 |
+| 256 | 171.3 | 161.0 | 257.7 | 241.5 | 154.3 | 0.94 | 1.50 | 1.41 | 0.90 |
+| 512 | 371.5 | 353.4 | 585.0 | 560.9 | 328.1 | 0.95 | 1.57 | 1.51 | 0.88 |
+| 1024 | 811.5 | 768.8 | 1307 | 1134 | 536.5 | 0.95 | 1.61 | 1.40 | 0.66 |
+| 2048 | 1714 | 1790 | 2890 | 2554 | 1023 | 1.04 | 1.69 | 1.49 | 0.60 |
+| 4096 | 3693 | 3949 | 6332 | 5230 | 2319 | 1.07 | 1.71 | 1.42 | 0.63 |
+| 8192 | 8273 | 9789 | 14312 | 14023 | 5330 | 1.18 | 1.73 | 1.69 | 0.64 |
+| 16384 | 18695 | 23062 | 33555 | 29680 | 11594 | 1.23 | 1.79 | 1.59 | 0.62 |
+| 32768 | 40984 | 58078 | 79062 | 66453 | 25016 | 1.42 | 1.93 | 1.62 | 0.61 |
+| 65536 | 87406 | 126375 | 170500 | 131750 | 63266 | 1.45 | 1.95 | 1.51 | 0.72 |
+| 131072 | 182688 | 266062 | 355375 | 295000 | 137344 | 1.46 | 1.95 | 1.61 | 0.75 |
+| 262144 | 386875 | 599375 | 1580500 | 590750 | 284812 | 1.55 | 4.09 | 1.53 | 0.74 |
+| 524288 | 821000 | 2122500 | 3282000 | 1288000 | 673000 | 2.59 | 4.00 | 1.57 | 0.82 |
+| 1048576 | 1894000 | 4549000 | 7052000 | 2696000 | 2368000 | 2.40 | 3.72 | 1.42 | 1.25 |
 <!-- end -->
 
 </details>
@@ -414,10 +414,9 @@ SSE. They were not tuned.
 
 ### Summary
 
-* Against FFmpeg, OneFFT is 1.25 to 5.3 times faster from 16 points up, on every machine (1.13
-  at worst, for large transforms on the M2). Against PFFFT 1.2 to 6.3 times, except for large
-  transforms on the M2, where the two are equal. At 4 and 8 points FFmpeg's dedicated kernels
-  are up to 1.3 times faster than OneFFT's.
+* Against FFmpeg, OneFFT is 1.25 to 5.3 times faster from 16 points up, on every machine.
+  Against PFFFT 1.2 to 6.3 times. At 4 and 8 points FFmpeg's dedicated kernels are up to 1.6
+  times faster than OneFFT's.
 * Against patient FFTW there are three ranges. Up to 32 points OneFFT's single kernels are 1.3 to
   3.6 times faster. From 8192 points up OneFFT is 1.2 to 5.9 times faster: its passes stay cache
   friendly, and FFTW's measured (not patient) plans are weaker. Between 64 and 4096 points both
@@ -429,11 +428,14 @@ SSE. They were not tuned.
   Against its own AVX2 kernels on the same machine it is 1.45 to 2.1 times faster on Zen 5 from
   32 points up, and 1.1 to 1.27 times on Zen 4 from 64 points up; a 512 bit operation is two 256
   bit operations on Zen 4.
-* The M2 is different at the top: between 2^15 and 2^18 points FFTW is up to 16% faster there,
-  and PFFFT is as fast as OneFFT. This was not investigated.
-* Apple's vDSP is in a class of its own on the M2: 1.2 to 2.4 times faster than OneFFT from 512
-  points up, and faster than FFTW. It is the only other library here that is written for one
-  specific family of cores, and the only one that does not have to split and interleave.
+* The order in which the first pass goes through its butterflies decides large transforms on
+  some cores (see "Decisions and their effect"). The M2 used to be the exception at the top,
+  with FFTW up to 16% faster between 2^15 and 2^18 points; with the first pass writing in
+  order OneFFT is 1.4 to 1.55 times faster than FFTW there.
+* Apple's vDSP is the fastest library on the M2: 1.1 to 1.7 times faster than OneFFT from 128
+  to 524288 points, and faster than FFTW (at 2^20 points OneFFT is ahead). It is the only other
+  library here that is written for one specific family of cores, and the only one that does
+  not have to split and interleave.
 * The 2021 proof of concept in `reference/` takes 6.9 us for 1024 points on the Pixel 3a, 6.6 us
   on the A50, 2.1 us on the S24 and 1.5 us on the M2: 1.04 to 1.9 times the time of OneFFT.
 
@@ -582,6 +584,11 @@ AVX-512, measured when the kernels first ran on hardware. Zen 5 / Zen 4, in ns:
 | The same with the AVX2 kernels, 2^13 points up | 2^18 points: 505 to 257 us / 345 to 315 us; Zen 2 at 2^16: 100 to 86 us |
 | All of it | 1024 points: 285 to 234 / 502 to 452; 2^18 points: 295 to 164 us / 277 to 262 us |
 
+The same change of the first pass on AArch64, 2^16 and 2^18 points: Apple M2 143 to 87 us and
+638 to 387 us (used on Apple platforms while the data fits the second level cache of the
+performance cores, 16 MiB on the M2); Cortex-X4 108 to 116 us and 515 to 627 us; Cortex-A73
+0.93 to 1.48 ms and 4.8 to 7.8 ms; Kryo 360 0.83 to 1.47 ms and 4.4 to 7.4 ms (not used there).
+
 The order of the first pass and the sizes with a radix 16 first pass depend on the processor's
 caches. Writing in order stops paying off when input and output together exceed a quarter of
 the third level cache (Zen 2 with 4 MiB: beyond 2^16 points; Zen 4 with 32 MiB: beyond 2^19),
@@ -595,7 +602,8 @@ Tried and dropped:
 
 * **First pass reading with a stride** so that consecutive butterflies write next to each other
   instead of to bit reversed positions: 2^21 points on the Pixel 3a took 64 ms instead of 43 ms.
-  (This is what AMD's x86 cores want for medium sizes, see above.)
+  Dropped for the phones only: it is what AMD's and Apple's cores want for medium sizes, see
+  above.
 * **Prefetching the scattered output lines of the first pass:** 3% faster on the Pixel 3a at
   2^21 points, 4 to 10% slower on the S24. With AVX-512, prefetching the lines to be written
   (reading in order) or to be read (writing in order) one to eight butterflies ahead: no gain

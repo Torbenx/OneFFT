@@ -61,9 +61,10 @@ the Intel i5-9600K, the EPYC 7443P (Zen 3), the EPYC 9254 (Zen 4) and the EPYC 9
 * R5     README.md, docs/design.md, docs/measurements.md.
 * X8/X9  AVX-512, measured and tuned on Zen 4 and Zen 5: radix 16 first pass in 32 registers,
          radix 8 middle pass, single kernels for 32 to 128 points, twiddles in registers, a
-         software pipelined last pass. The x86 plans choose the order of the first pass (reading
-         or writing in order) and the sizes with a radix 16 first pass by the third level cache
-         of the processor. Faster than FFTW at every size on both machines.
+         software pipelined last pass. Faster than FFTW at every size on both machines.
+* All    The first pass writes in order instead of reading in order where that is faster: on
+         AMD processors (SSE2, AVX2, AVX-512) and on Apple platforms, for the sizes that their
+         caches allow. 1.4 to 1.7 times faster on Zen 5 and the M2 from 2^15 to 2^19 points.
 
 Open:
 
@@ -74,11 +75,12 @@ Open:
 * AVX-512, not built (docs/measurements.md, "Where the time goes", has the estimates): last
   passes for 6 index bits, which save a pass at every third size; middle passes that keep
   the twiddles of a region in registers when its blocks are single butterflies.
-* The first pass writing in order was measured on Zen 2, Zen 4 and Zen 5 only. Zen 3 gets it by
-  the same rule, unmeasured (the EPYC 7443P was no longer available). On AArch64 it was slower
-  on the old phones, but it was never tried on the Cortex-X4 and the M2 at medium sizes.
+* The first pass writing in order was measured on Zen 2, Zen 4, Zen 5 and the M2 (faster, in
+  use) and on the three phones (slower, not used). Zen 3 gets it by the same rule as the other
+  AMD cores, unmeasured: the EPYC 7443P was no longer available. Intel processors read in
+  order, unmeasured as well: the i5-9600K was not reachable when this was found.
 * Between 64 and 4096 points FFTW with patient planning is still up to 14% faster with AVX2 and
-  NEON on some machines (see docs/measurements.md); Apple's vDSP is 1.2 to 2.3 times faster on
+  NEON on some machines (see docs/measurements.md); Apple's vDSP is 1.1 to 1.7 times faster on
   the M2. Ideas that were not tried: vendor specific AVX2 kernels (the in-place kernels are
   limited by the multiply-add units on AMD and by instruction count on Intel), and the fused
   form of the passes on x86.

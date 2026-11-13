@@ -114,18 +114,17 @@ an AMD EPYC 9254 (Zen 4), an AMD EPYC 7443P (Zen 3), an AMD Ryzen 7 5700U (Zen 2
 (Kryo 360) and a Galaxy A50 (Cortex-A73), and discusses what limits the speed on each of them.
 In short:
 
-* Against FFmpeg's `av_tx`, OneFFT is 1.25 to 5.3 times faster from 16 points up (1.13 at
-  worst, for large transforms on the M2). Against PFFFT it is 1.2 to 6.3 times faster, except
-  for large transforms on the M2, where the two are equal.
+* Against FFmpeg's `av_tx`, OneFFT is 1.25 to 5.3 times faster from 16 points up. Against
+  PFFFT it is 1.2 to 6.3 times faster.
 * Against FFTW with patient planning it is 1.3 to 3.6 times faster up to 32 points, and 1.2 to
   5.9 times faster from 8192 points up. From 64 to 4096 points the two are close with NEON and
-  AVX2: between 14% slower and 21% faster, depending on the machine and the size. The M2 is the
-  exception at the top: there FFTW is up to 16% faster between 2^15 and 2^18 points.
+  AVX2: between 14% slower and 21% faster, depending on the machine and the size.
 * With AVX-512 it is ahead of FFTW at every size on the two machines measured, Zen 4 and
   Zen 5: by 1.05 to 1.5 times from 64 to 4096 points. Its AVX-512 kernels are 1.45 to 2.1 times
   faster than its AVX2 kernels on Zen 5, and 1.1 to 1.27 times on Zen 4.
-* On Apple hardware, Apple's own vDSP is 1.2 to 2.4 times faster than OneFFT from 512 points up
-  (it works on separate real and imaginary arrays and is written for exactly these cores).
+* On Apple hardware, Apple's own vDSP is 1.1 to 1.7 times faster than OneFFT from 128 to
+  524288 points (it works on separate real and imaginary arrays and is written for exactly
+  these cores).
 
 Reproduce with `scripts/third_party.sh <target>` (fetches and builds the other libraries) and
 `scripts/build_bench.sh <target>`. The measured times are in [docs/results](docs/results);
