@@ -140,8 +140,14 @@ class Asm:
 
     def label(self):
         """Places a local label here and returns it, for use as a backward branch target."""
+        return self.place(self.forward_label())
+
+    def forward_label(self):
+        """Reserves a label for a forward branch; `place` puts it into the instruction list."""
         self._labels += 1
-        name = str(self._labels)
+        return str(self._labels)
+
+    def place(self, name):
         self.ins.append(Ins(name + ":", (), (), (), None, label=name))
         return name
 

@@ -16,7 +16,9 @@ host)
     # the better ones, down to portable C.
     mkdir -p "$root/build/host"
     case $(uname -m) in
-    x86_64) variants=("" -DONEFFT_NO_AVX512 -DONEFFT_NO_AVX2 -DONEFFT_NO_SIMD) ;;
+    # (the two tunings make the AVX-512 plans use each of their first passes at all sizes)
+    x86_64) variants=("" -DONEFFT_AVX512_TUNING=99,0,99,0 -DONEFFT_AVX512_TUNING=9,99,10,99 -DONEFFT_NO_AVX512
+                      -DONEFFT_NO_AVX2 -DONEFFT_NO_SIMD) ;;
     *) variants=("" -DONEFFT_NEON_FMA=0 -DONEFFT_NEON_FMA=1 -DONEFFT_NO_SIMD) ;; # both forms of the passes
     esac
     for variant in "${variants[@]}"; do

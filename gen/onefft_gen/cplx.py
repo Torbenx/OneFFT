@@ -87,10 +87,15 @@ def butterfly_shear(be, a, b, tan_half, sin):
     register besides the four of a and b, for kernels that have none to spare. |phi| should
     not exceed a quarter turn by much: the error grows with tan(phi/2).
     """
-    be.mla(b.re, b.im, tan_half)
-    be.mls(b.im, b.re, sin)
-    be.mla(b.re, b.im, tan_half)
-    return butterfly_in_place(be, a, b)
+    return butterfly_in_place(be, a, shear(be, b, tan_half, sin))
+
+
+def shear(be, x, tan_half, sin):
+    """Returns x * exp(-i phi), computed in the registers of x by three shears."""
+    be.mla(x.re, x.im, tan_half)
+    be.mls(x.im, x.re, sin)
+    be.mla(x.re, x.im, tan_half)
+    return Cx(x.re, x.im, x.rot)
 
 
 def butterfly_tan(be, a, b, c, t):
@@ -190,12 +195,17 @@ def bit_reverse(value, bits):
     return result
 
 
-def fft_plain(be, xs, sqrt_half=None, in_place=False):
+def fft_plain(be, xs, sqrt_half=None, in_place=False, fused_stages=()):
     """Forward FFT across a list of 2, 4 or 8 complex vectors, natural order in and out.
 
     Every lane is transformed independently. Only trivial twiddles and exp(-i*pi/4) occur, the
     latter needs the `sqrt_half` multiplier operand for 8 points. With `in_place` the result
     is computed in the registers of the input and no further register is used.
+
+    `fused_stages` lists stages (0 is the first) whose butterflies are computed like the
+    in-place ones, with two fused multiply-adds in place of two of the four additions, although
+    registers are available: on cores that add and multiply in different execution units this
+    balances the load between them.
     """
     n = len(xs)
     bits = n.bit_length() - 1
@@ -213,9 +223,10 @@ def fft_plain(be, xs, sqrt_half=None, in_place=False):
                 if eighths % 2:
                     y = (cmul_w8_in_place if in_place else cmul_w8)(be, y, sqrt_half)
                 a[start + half + k] = y.rotated(eighths // 2)
+        fused = in_place or (size.bit_length() - 2) in fused_stages
         for start in range(0, n, size):
             for k in range(half):
-                a[start + k], a[start + half + k] = (butterfly_in_place if in_place else butterfly)(
+                a[start + k], a[start + half + k] = (butterfly_in_place if fused else butterfly)(
                     be, a[start + k], a[start + half + k])
         size *= 2
     assert all(x.rot == 0 for x in a)

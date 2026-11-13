@@ -51,8 +51,13 @@ def main():
     if "avx512" in targets:
         kernels = avx512_kernels.all_kernels()
         for inverse in (False, True):
-            for log2n in range(9, 14):
+            for log2n in (5, 6, 7):
                 check("avx512", lambda flat: model.avx512_transform(kernels, log2n, flat, inverse), log2n, inverse)
+            for first_bits in (4, 3):  # radix 16 and radix 8 first pass
+                for log2n in range(8 if first_bits == 4 else 10, 15):
+                    check("avx512 f%d %s" % (1 << first_bits, model.avx512_passes(log2n, first_bits)),
+                          lambda flat: model.avx512_transform(kernels, log2n, flat, inverse, first_bits, log2n % 2 == 1),
+                          log2n, inverse)
     return 0
 
 

@@ -150,9 +150,22 @@ class Kernel(X86):
         t2, t3 = self.exchange_b1(hi01, hi23)
         return [t0, t1, t2, t3]
 
+    def twiddle_operands(self, table, offset):
+        """The complex vector stored at table + offset (real parts, then imaginary) as two
+        multiplier operands."""
+        w_re, w_im = Mem(table, offset), Mem(table, offset + self.bytes)
+        if self.simd_count == 32:
+            # Each part is used at least twice. With registers to spare, loading it once is
+            # cheaper than memory operands: loads are a bottleneck of the AVX-512 kernels.
+            operands = w_re, w_im
+            w_re, w_im = self.vreg(), self.vreg()
+            self.load(w_re, operands[0])
+            self.load(w_im, operands[1])
+        return w_re, w_im
+
     def twiddle_vector(self, x, table, offset):
-        """Multiplies by the complex vector stored at table + offset (real parts, then imaginary)."""
-        return cmul(self, x, Mem(table, offset), Mem(table, offset + self.bytes))
+        """Multiplies by the complex vector stored at table + offset."""
+        return cmul(self, x, *self.twiddle_operands(table, offset))
 
     def twiddle_scalar(self, x, table, re_offset, im_offset):
         """Multiplies all lanes by the complex number whose parts are stored at the offsets."""
@@ -543,7 +556,7 @@ def codelet_avx2(n, inverse):
 
 def schedule(kernel):
     """Schedules with the largest reordering window that still allows register allocation."""
-    latency = {"fp": OPTIONS["fp_latency"], "perm": 1, "load": 5, "store": 1, "int": 1}
+    latency = {"fp": OPTIONS["fp_latency"], "perm": 1, "load": 5, "store": 1, "int": 1, "mov": 1}
     original = kernel.ins
     for window in (64, 48, 32, 24, 16, 12, 8, 4, 2, 0):
         if window > OPTIONS["window"]:

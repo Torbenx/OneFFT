@@ -68,7 +68,7 @@ class X86(Asm):
         self.isa = isa
         self.prefix, self.bytes, self.simd_count, self.vex, self.fma = ISAS[isa]
         self.lanes = self.bytes // 4
-        self.two = None  # memory operand holding 2.0 in all lanes, for the in-place operations
+        self.two = None  # operand holding 2.0 in all lanes, for the in-place operations
 
     def clobbers(self, used):
         return ["xmm%d" % p for p in used] + ["cc", "memory"]
@@ -86,25 +86,26 @@ class X86(Asm):
 
     # ---- generic three-operand instruction -------------------------------------------------
 
-    def _op(self, name, d, a, b, fn, commutative=False, kind="fp", imm=None):
+    def _operand(self, b, index):
+        """A source operand that is a register or memory: its registers, its text with `index` as
+        the number of the first placeholder, and a function that reads its value in simulation."""
+        if isinstance(b, Mem):
+            assert not b.broadcast or self.isa == "avx512"
+
+            def value(m):
+                data = m.load(b.address(m), 1 if b.broadcast else self.lanes)
+                return data * self.lanes if b.broadcast else data
+            return b.regs(), b.text(index) + ("%{{1to16%}}" if b.broadcast else ""), value
+        return [b], self._r(index), lambda m: m.reg[b]
+
+    def _op(self, name, d, a, b, fn, kind="fp", imm=None):
         """d = fn(a, b), computed lane block by lane block.
 
         `b` is a register or a Mem. `fn` maps two lists (the full registers) to the result list.
         `name` is the SSE mnemonic; the VEX form is the same with a `v` prefix.
         """
         immediate = "$%d, " % imm if imm is not None else ""
-        if isinstance(b, Mem):
-            assert not b.broadcast or self.isa == "avx512"
-            b_regs, b_text = b.regs(), b.text(2) + ("%{{1to16%}}" if b.broadcast else "")
-
-            def value(m):
-                data = m.load(b.address(m), 1 if b.broadcast else self.lanes)
-                return data * self.lanes if b.broadcast else data
-        else:
-            b_regs, b_text = [b], self._r(2)
-
-            def value(m):
-                return m.reg[b]
+        b_regs, b_text, value = self._operand(b, 2)
 
         def sim(m):
             m.reg[d] = fn(m.reg[a], value(m))
@@ -144,28 +145,18 @@ class X86(Asm):
     # ---- SIMD arithmetic -------------------------------------------------------------------
 
     def add(self, d, a, b):
-        self._op("addps", d, a, b, self._lanewise(lambda p, q: p + q), commutative=True)
+        self._op("addps", d, a, b, self._lanewise(lambda p, q: p + q))
 
     def sub(self, d, a, b):
         self._op("subps", d, a, b, self._lanewise(lambda p, q: p - q))
 
     def mul(self, d, a, w):
-        self._op("mulps", d, a, w, self._lanewise(lambda p, q: p * q), commutative=True)
+        self._op("mulps", d, a, w, self._lanewise(lambda p, q: p * q))
 
     def _accumulate(self, fma_name, sse_name, sign, d, a, w):
         """d += sign * a * w."""
         if self.fma:
-            if isinstance(w, Mem):
-                w_regs, w_text = w.regs(), w.text(2) + ("%{{1to16%}}" if w.broadcast else "")
-
-                def value(m):
-                    data = m.load(w.address(m), 1 if w.broadcast else self.lanes)
-                    return data * self.lanes if w.broadcast else data
-            else:
-                w_regs, w_text = [w], self._r(2)
-
-                def value(m):
-                    return m.reg[w]
+            w_regs, w_text, value = self._operand(w, 2)
 
             def sim(m):
                 m.reg[d] = [acc + sign * p * q for acc, p, q in zip(m.reg[d], m.reg[a], value(m))]
@@ -187,12 +178,12 @@ class X86(Asm):
     def _fused132(self, name, d, y, fn):
         """d = fn(d, y) by a fused multiply-add of the form d = +-(d * two) +- y."""
         assert self.fma and self.two is not None
-        two = self.two
+        two_regs, two_text, _ = self._operand(self.two, 2)
 
         def sim(m):
             m.reg[d] = [fn(p, q) for p, q in zip(m.reg[d], m.reg[y])]
-        self.emit("%s %s, %s, %s" % (name, two.text(2), self._r(1), self._r(0)), [d, y] + two.regs(), (d,),
-                  [d, y] + two.regs(), sim, kind="fp", access=self._operand_access(two))
+        self.emit("%s %s, %s, %s" % (name, two_text, self._r(1), self._r(0)), [d, y] + two_regs, (d,),
+                  [d, y] + two_regs, sim, kind="fp", access=self._operand_access(self.two))
 
     def difference_from_sum(self, b, s, plus):
         """b = s - 2 b, or s + 2 b with `plus`: the second result of a butterfly from the first."""
@@ -292,12 +283,22 @@ class X86(Asm):
                       [d] + mem.regs(), (d,), mem.regs(), sim, kind="load", access=access)
 
     def multiplier(self, mem):
-        """A scalar from memory as a multiplier operand: the cheapest form the target offers."""
-        if self.isa == "avx512":
-            return Mem(mem.base, mem.offset, mem.index, mem.scale, broadcast=True)
+        """A scalar from memory as a multiplier operand, replicated to all lanes of a register.
+
+        AVX-512 could use the scalar as an embedded broadcast operand instead, but every such
+        operand is a load, and a twiddle is used more than once: measured on Zen 5, registers
+        make the middle passes 20% faster (no difference on Zen 4).
+        """
         reg = self.vreg()
         self.broadcast(reg, mem)
         return reg
+
+    def mov(self, d, a):
+        """Register copy. Costs no execution resources on current cores (eliminated at rename)."""
+        def sim(m):
+            m.reg[d] = m.reg[a]
+        self.emit("%s %s, %s" % ("vmovaps" if self.vex else "movaps", self._r(1), self._r(0)), (d, a), (d,), (a,), sim,
+                  kind="mov")
 
     def finish(self):
         """Ends a kernel. After 256 or 512 bit code the upper register halves have to be cleared
@@ -371,6 +372,13 @@ class X86(Asm):
             return m.reg[counter] != 0
         # One unit, so that nothing that changes the flags can be scheduled in between.
         self.branch("sub $1, {0}\njnz %sb" % label, label, sim, (counter,))
+
+    def skip_if_last(self, counter, label):
+        """Decrements counter and branches forward to label if it is zero then."""
+        def sim(m):
+            m.reg[counter] -= 1
+            return m.reg[counter] == 0
+        self.branch("sub $1, {0}\njz %sf" % label, label, sim, (counter,))
 
 
 class _Gpr(str):

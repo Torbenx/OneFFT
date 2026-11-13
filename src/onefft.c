@@ -30,6 +30,7 @@
 #include "onefft_avx2.inc"
 #ifndef ONEFFT_NO_AVX512
 #define ONEFFT_AVX512 1
+#include <cpuid.h>
 #include "onefft_avx512.inc"
 #endif
 #endif
@@ -530,20 +531,20 @@ typedef struct {
     unsigned lane_bits;
     size_t (*low_bits)(size_t region, unsigned bits); /* the low output bits of a region */
     onefft_first_fn *f4[2], *f_odd[2]; /* radix 4; radix 2 (SSE2) or 8 (AVX2, AVX-512) */
-    onefft_middle_fn *c4;
+    onefft_middle_fn *c4, *c8;         /* c8: AVX-512 */
     onefft_last_fn *l4[2];             /* SSE2 */
     onefft_last_fn *la, *la2, *la8, *la8x, *lb[2]; /* AVX2 */
     onefft_small_fn *small[6][2];      /* by log2n; NULL where the passes are used */
 } onefft_x86_kernels;
 
 static const onefft_x86_kernels onefft_sse2_kernels = {
-    2, onefft_bit_reverse, {onefft_sse2_f4, onefft_sse2_f4i}, {onefft_sse2_f2, onefft_sse2_f2i}, onefft_sse2_c4,
+    2, onefft_bit_reverse, {onefft_sse2_f4, onefft_sse2_f4i}, {onefft_sse2_f2, onefft_sse2_f2i}, onefft_sse2_c4, NULL,
     {onefft_sse2_l4, onefft_sse2_l4i}, NULL, NULL, NULL, NULL, {NULL, NULL},
     {{0}, {0}, {0}, {onefft_sse2_n8, onefft_sse2_n8i}, {onefft_sse2_n16, onefft_sse2_n16i}, {0}}};
 
 #ifdef ONEFFT_AVX2
 static const onefft_x86_kernels onefft_avx2_kernels = {
-    3, onefft_bit_reverse, {onefft_avx2_f4, onefft_avx2_f4i}, {onefft_avx2_f8, onefft_avx2_f8i}, onefft_avx2_c4,
+    3, onefft_bit_reverse, {onefft_avx2_f4, onefft_avx2_f4i}, {onefft_avx2_f8, onefft_avx2_f8i}, onefft_avx2_c4, NULL,
     {NULL, NULL}, onefft_avx2_la, onefft_avx2_la2, onefft_avx2_la8, onefft_avx2_la8x,
     {onefft_avx2_lb, onefft_avx2_lbi},
     {{0}, {0}, {0}, {onefft_sse2_n8, onefft_sse2_n8i}, {onefft_avx2_n16, onefft_avx2_n16i},
@@ -553,22 +554,23 @@ static const onefft_x86_kernels onefft_avx2_kernels = {
 /* AVX2 lane order: the element of 8 consecutive values that each lane holds. */
 static const unsigned char onefft_avx2_element[8] = {0, 1, 4, 5, 2, 3, 6, 7};
 
-/* Adds a radix 4 middle pass that transforms two index bits after `done` are finished. The
- * twiddle of butterfly j in region r is exp(-2 pi i K / 2^(done + 2)), K = low + (j << shift)
- * where `low` are the output bits that the region stands for. Returns the new table size. */
+/* Adds a middle pass that transforms `bits` index bits (2, or 3 with AVX-512) after `done` are
+ * finished. The twiddle of butterfly j in region r is exp(-2 pi i K / 2^(done + bits)),
+ * K = low + (j << region_bits) where `low` are the output bits that the region stands for.
+ * Returns the new table size. */
 static size_t onefft_x86_middle(onefft_plan *plan, float *memory, size_t floats, const onefft_x86_kernels *kernels,
-                                unsigned done, unsigned region_bits, size_t s_high, size_t s_low, size_t inner,
-                                size_t skip, size_t blocks) {
+                                unsigned done, unsigned bits, unsigned region_bits, size_t s_high, size_t s_low,
+                                size_t inner, size_t skip, size_t blocks) {
     size_t start = floats, regions = (size_t)1 << region_bits;
     for (size_t r = 0; r < regions; r++) {
         for (size_t j = 0; j < inner; j++) {
             uint64_t k = kernels->low_bits(r, region_bits) + (j << region_bits);
-            floats += onefft_middle_entry(memory ? memory + floats : NULL, k, done + 2, 4);
+            floats += onefft_middle_entry(memory ? memory + floats : NULL, k, done + bits, 1u << bits);
         }
     }
     if (memory) {
         onefft_middle *m = &plan->middle[plan->middle_count++];
-        m->run = kernels->c4;
+        m->run = bits == 3 ? kernels->c8 : kernels->c4;
         size_t vector = (size_t)8 << kernels->lane_bits;
         m->tw = memory + start;
         m->regions = regions;
@@ -641,7 +643,7 @@ static size_t onefft_x86_plan(onefft_plan *plan, float *memory, const onefft_x86
      * next to the lanes. */
     unsigned done = first_bits;
     if (!avx2 && first_bits == 1) {
-        floats = onefft_x86_middle(plan, memory, floats, kernels, done, 1, 2 * n, vector, 1, vector, n >> 5);
+        floats = onefft_x86_middle(plan, memory, floats, kernels, done, 2, 1, 2 * n, vector, 1, vector, n >> 5);
         done += 2;
     }
     if (memory) plan->nested_from = plan->middle_count;
@@ -649,7 +651,7 @@ static size_t onefft_x86_plan(onefft_plan *plan, float *memory, const onefft_x86
     /* Nested middle passes, small strides first. */
     for (; done + last_bits < log2n; done += 2) {
         size_t s_high = (size_t)8 << done;
-        floats = onefft_x86_middle(plan, memory, floats, kernels, done, lane_bits, s_high, 2 * s_high,
+        floats = onefft_x86_middle(plan, memory, floats, kernels, done, 2, lane_bits, s_high, 2 * s_high,
                                    (size_t)1 << (done - lane_bits), 3 * s_high, (n << (3 - lane_bits)) / (4 * s_high));
     }
 
@@ -746,18 +748,22 @@ static size_t onefft_x86_plan(onefft_plan *plan, float *memory, const onefft_x86
 
 /* ---- AVX-512 --------------------------------------------------------------------------------
  *
- * Not tuned on hardware yet. 16 lanes and 32 registers: four index bits sit in the lanes, a
- * kernel holds 8 complex vectors. Transforms below 512 points use the AVX2 plan.
+ * 16 lanes and 32 registers: four index bits sit in the lanes, a kernel holds 8 complex vectors,
+ * or 16 if it computes in place. 32 to 128 points are single kernels; below, the AVX2 plan is
+ * used. Larger transforms:
  *
- *   f8          the top 3 index bits
- *   c4          2 bits each: first bit n-4 (see below) with bit n-5, then nested passes
+ *   f16         the top 4 index bits
+ *     or f8     the top 3 index bits, followed by a c8 for bit n-4 (see below) and the two bits
+ *               next to the lanes
+ *   c8, c4      nested passes, 3 and 2 bits each
  *   la3 / la2   index bits (4,) 3, 2
  *   lb          index bits 1, 0
  *
  * The four exchanges of lanes and registers in la and lb are one shuffle per register each
  * only in one arrangement (gen/onefft_gen/avx512_kernels.py): the top four position bits of the
- * output hold, from the top, output bits 0, 2, 1, 3. Output bit 3 comes from index bit n-4,
- * which the first pass therefore leaves at that position.
+ * output hold, from the top, output bits 0, 2, 1, 3. The radix 16 first pass writes its results
+ * accordingly. The radix 8 first pass produces only three of them: output bit 3 comes from index
+ * bit n-4, which it therefore leaves at that position.
  */
 #ifdef ONEFFT_AVX512
 
@@ -769,52 +775,122 @@ static size_t onefft_avx512_low_bits(size_t region, unsigned bits) {
 }
 
 static const onefft_x86_kernels onefft_avx512_kernels = {
-    4, onefft_avx512_low_bits, {NULL, NULL}, {onefft_avx512_f8, onefft_avx512_f8i}, onefft_avx512_c4,
+    4, onefft_avx512_low_bits, {NULL, NULL}, {NULL, NULL}, onefft_avx512_c4, onefft_avx512_c8,
     {NULL, NULL}, onefft_avx512_la3, onefft_avx512_la2, NULL, NULL, {onefft_avx512_lb, onefft_avx512_lbi}, {{0}}};
 
 /* The element of 16 consecutive values that each lane holds. */
 static const unsigned char onefft_avx512_element[16] = {0, 1, 8, 9, 2, 3, 10, 11, 4, 5, 12, 13, 6, 7, 14, 15};
 
+/* Choices that depend on the transform size and on the processor. All sizes are log2 of the
+ * number of points. docs/measurements.md has the numbers behind them. */
+typedef struct {
+    unsigned char f16_to, f16_from;         /* radix 16 first pass up to and from these sizes, radix 8 between */
+    unsigned char ordered_from, ordered_to; /* sizes whose first pass writes in order instead of reading in order */
+} onefft_avx512_tuning;
+
+#ifdef ONEFFT_DEVELOPER
+static const onefft_avx512_tuning *onefft_developer_tuning; /* overrides the choice below */
+#endif
+
+static onefft_avx512_tuning onefft_avx512_tune(void) {
+#ifdef ONEFFT_DEVELOPER
+    if (onefft_developer_tuning) return *onefft_developer_tuning;
+#endif
+#ifdef ONEFFT_AVX512_TUNING /* the four numbers, for tests: -DONEFFT_AVX512_TUNING=12,13,13,30 */
+    static const onefft_avx512_tuning fixed = {ONEFFT_AVX512_TUNING};
+    return fixed;
+#else
+    /* Zen 5 handles one store that misses the cache at a time, but many loads: beyond the
+     * first level cache it is up to 40% faster if the first pass writes in order. Zen 4
+     * gains a few percent. Both lose once the data exceeds what their TLB covers. Other
+     * processors with AVX-512 have not been measured and keep the conventional order. */
+    static const onefft_avx512_tuning zen5 = {12, 21, 14, 20}, zen4 = {12, 22, 14, 19}, other = {12, 22, 99, 0};
+    unsigned eax = 0, ebx = 0, ecx = 0, edx = 0;
+    if (!__get_cpuid(0, &eax, &ebx, &ecx, &edx) || ebx != 0x68747541 || edx != 0x69746e65 || ecx != 0x444d4163) {
+        return other; /* not "AuthenticAMD" */
+    }
+    __get_cpuid(1, &eax, &ebx, &ecx, &edx);
+    unsigned family = ((eax >> 8) & 15) + ((eax >> 20) & 255);
+    return family >= 0x1a ? zen5 : zen4;
+#endif
+}
+
 static size_t onefft_avx512_plan(onefft_plan *plan, float *memory) {
     const onefft_x86_kernels *kernels = &onefft_avx512_kernels;
     unsigned log2n = plan->log2n;
     int inverse = plan->inverse;
-    if (log2n < 9) return onefft_x86_plan(plan, memory, &onefft_avx2_kernels);
+    if (log2n < 5) return onefft_x86_plan(plan, memory, &onefft_avx2_kernels);
+    if (log2n < 8) { /* 32 to 128 points fit the registers */
+        static onefft_small_fn *const small[3][2] = {{onefft_avx512_n32, onefft_avx512_n32i},
+                                                     {onefft_avx512_n64, onefft_avx512_n64i},
+                                                     {onefft_avx512_n128, onefft_avx512_n128i}};
+        if (memory) {
+            plan->small = small[log2n - 5][inverse];
+            plan->execute = onefft_execute_small;
+        }
+        return 0;
+    }
     size_t n = plan->n, floats = 0, vector = 128;
     if (memory) plan->middle_count = 0;
 
-    /* First pass: counts through index bits n-4 .. 4. The top one stays, the others are
-     * reversed. */
-    unsigned count_bits = log2n - 7, low_bits = count_bits - 1;
+    /* Which passes. The first is radix 16 or radix 8. A radix 8 first pass is followed by a
+     * pass for 3 bits that is not nested (`special`, see below). The nested middle passes take
+     * 3 or 2 bits each, and the two last passes 5 or 4 together: whichever needs fewer middle
+     * passes, and among equals 4 if the data fits the first level cache and 5 otherwise. (One
+     * bit cannot be left to the middle passes.) */
+    onefft_avx512_tuning tuning = onefft_avx512_tune();
+    unsigned first_bits = log2n <= tuning.f16_to || log2n >= tuning.f16_from || log2n < 10 ? 4 : 3;
+    unsigned special = first_bits == 3 ? 3 : 0;
+    unsigned rest = log2n - first_bits - special - 4; /* bits of the middle passes if the last take 4 */
+    unsigned last_bits = rest == 1 || (rest >= 3 && (rest % 3 == 1 || log2n > 12)) ? 5 : 4;
+    unsigned nested = log2n - first_bits - special - last_bits;
+
+    /* First pass. It counts through the index bits between its own and the lanes and writes to
+     * the bit reversed position; after the radix 8 pass the top one of those bits, n-4, keeps
+     * its place instead. It handles its butterflies either in the order of the input or in the
+     * order of the output, and reads or writes scattered cache lines accordingly once the data
+     * exceeds the first level cache. Which is better depends on the size: see
+     * docs/measurements.md. */
+    unsigned count_bits = log2n - first_bits - 4, low_bits = count_bits - (4 - first_bits);
     size_t first_count = (size_t)1 << count_bits;
     if (memory) {
         uint32_t *table = (uint32_t *)(memory + floats);
+        int ordered = log2n >= tuning.ordered_from && log2n <= tuning.ordered_to;
         for (size_t a = 0; a < first_count; a++) {
             size_t low = onefft_bit_reverse(a & (((size_t)1 << low_bits) - 1), low_bits);
-            table[2 * a] = (uint32_t)(a << 4);
-            table[2 * a + 1] = (uint32_t)(((a >> low_bits << low_bits) | low) << 4);
+            size_t b = (a >> low_bits << low_bits) | low; /* the mapping is its own inverse */
+            table[2 * a] = (uint32_t)((ordered ? b : a) << 4);
+            table[2 * a + 1] = (uint32_t)((ordered ? a : b) << 4);
         }
-        plan->first = kernels->f_odd[inverse];
+        plan->first = first_bits == 4 ? (inverse ? onefft_avx512_f16i : onefft_avx512_f16)
+                                      : (inverse ? onefft_avx512_f8i : onefft_avx512_f8);
         plan->first_table = table;
         plan->first_count = first_count;
-        plan->first_in_stride = plan->first_out_stride = n;
+        plan->first_in_stride = plan->first_out_stride = (8 * n) >> first_bits;
     }
     floats += 2 * first_count;
     floats = (floats + 15) & ~(size_t)15;
 
-    /* Index bit n-4 at the fourth highest position with bit n-5 next to the lanes: not nested. */
-    unsigned done = 3;
-    floats = onefft_x86_middle(plan, memory, floats, kernels, done, 3, n / 2, vector, 1, vector, n >> 9);
-    done += 2;
+    /* After a radix 8 first pass: index bit n-4 at the fourth highest position with the two
+     * bits next to the lanes, not nested. */
+    unsigned done = first_bits;
+    if (special) {
+        floats = onefft_x86_middle(plan, memory, floats, kernels, done, 3, 3, n / 2, vector, 1, 3 * vector, n >> 10);
+        done += 3;
+    }
     if (memory) plan->nested_from = plan->middle_count;
 
-    /* Nested passes, then la3 for an even and la2 for an odd number of index bits. */
-    int three = log2n % 2 == 0;
-    for (; done + (three ? 5 : 4) < log2n; done += 2) {
+    /* Nested passes, small strides first. */
+    unsigned twos = (3 - nested % 3) % 3;
+    for (unsigned i = 0; done + last_bits < log2n; i++) {
+        unsigned bits = i < (nested - 2 * twos) / 3 ? 3 : 2;
         size_t s_high = (size_t)8 << done;
-        floats = onefft_x86_middle(plan, memory, floats, kernels, done, 4, s_high, 2 * s_high, (size_t)1 << (done - 4),
-                                   3 * s_high, (n / 2) / (4 * s_high));
+        floats = onefft_x86_middle(plan, memory, floats, kernels, done, bits, 4, s_high, 2 * s_high,
+                                   (size_t)1 << (done - 4), (((size_t)1 << bits) - 1) * s_high,
+                                   (n / 2) / (s_high << bits));
+        done += bits;
     }
+    int three = last_bits == 5; /* la3 or la2 */
 
     /* la: butterfly j of region r (output bits 0 and 2) has the low output bits
      * K = k0 + 2 k1 + 4 k2 + 8 k3 + 16 j. Output bits 1 and 3 (k1, k3) select the vector at

@@ -263,51 +263,79 @@ def x86_transform(kernels, isa, log2n, flat, inverse=False):
     return m.load(dst, 2 * n)
 
 
-def avx512_transform(kernels, log2n, flat, inverse=False):
-    """Runs a complete AVX-512 transform (512 points or more) in simulation."""
+def avx512_passes(log2n, first_bits):
+    """The index bits per pass of an AVX-512 plan after the first pass: (special, nested, last).
+
+    `special` is the number of bits of the pass that follows a radix 8 first pass (0 after
+    radix 16), `nested` the list for the nested middle passes, `last` 5 or 4 for the two last
+    passes together: whichever needs fewer middle passes, and among equals 4 up to 4096
+    points and 5 above.
+    """
+    special = 3 if first_bits == 3 else 0
+    rest = log2n - first_bits - special - 4
+    last = 5 if rest == 1 or (rest >= 3 and (rest % 3 == 1 or log2n > 12)) else 4
+    rest = log2n - first_bits - special - last
+    twos = (3 - rest % 3) % 3
+    return special, [3] * ((rest - 2 * twos) // 3) + [2] * twos, last
+
+
+def avx512_transform(kernels, log2n, flat, inverse=False, first_bits=4, ordered=False):
+    """Runs a complete AVX-512 transform in simulation.
+
+    `first_bits` is 4 for the radix 16 first pass and 3 for the radix 8 one (1024 points or
+    more); `ordered` makes the first pass write in order instead of reading in order.
+    """
     from .avx512_kernels import ELEMENT_OF as element_of, low_bits
 
     n = 1 << log2n
-    assert log2n >= 9
     kernel = {k.name[len("onefft_avx512_"):]: k for k in kernels}
     suffix = "i" if inverse else ""
     vector = 128
     m = Machine(64 * n + 4096)
     src, dst, table, args = 0, 8 * n, 16 * n, 60 * n
     m.store(src, flat)
+    if log2n <= 7:
+        kernel["n%d%s" % (n, suffix)].run(m, **{"in": src, "out": dst})
+        return m.load(dst, 2 * n)
+    special, nested, last = avx512_passes(log2n, first_bits)
 
-    # First pass: counts through index bits n-4 .. 4. Bit n-4 keeps its place (its result,
-    # output bit 3, is an exchange partner of the last passes), the others are reversed.
-    count_bits = log2n - 7
+    # First pass: counts through the index bits between its own and the lanes, and writes to
+    # the bit reversed position. After a radix 8 first pass, index bit n-4 keeps its place
+    # instead: its result, output bit 3, is an exchange partner of the last passes.
+    count_bits = log2n - first_bits - 4
+    kept = 4 - first_bits
     first = []
     for a in range(1 << count_bits):
-        low = bit_reverse(a & ((1 << (count_bits - 1)) - 1), count_bits - 1)
-        first += [a << 4, ((a >> (count_bits - 1) << (count_bits - 1)) | low) << 4]
+        low = bit_reverse(a & ((1 << (count_bits - kept)) - 1), count_bits - kept)
+        b = (a >> (count_bits - kept) << (count_bits - kept)) | low
+        first += [b << 4, a << 4] if ordered else [a << 4, b << 4]
     m.store(table, first)
-    kernel["f8" + suffix].run(m, **{"in": src, "out": dst, "table": table, "count": 1 << count_bits,
-                                    "in_stride": n, "out_stride": n})
-    done = 3
+    stride = 8 * n >> first_bits
+    kernel["f%d%s" % (1 << first_bits, suffix)].run(m, **{"in": src, "out": dst, "table": table, "count": 1 << count_bits,
+                                                         "in_stride": stride, "out_stride": stride})
+    done = first_bits
 
-    def middle(region_bits, s_high, s_low, inner, blocks, skip):
+    def middle(bits, region_bits, s_high, s_low, inner, blocks, skip):
         nonlocal done
         regions, region_bytes = 1 << region_bits, 8 * n >> region_bits
         tw = []
         for r in range(regions):
             for j in range(inner):
-                tw += middle_entry(low_bits(r, region_bits) + (j << region_bits), 1 << (done + 2), 4)
+                tw += middle_entry(low_bits(r, region_bits) + (j << region_bits), 1 << (done + bits), 1 << bits)
         m.store(table, tw)
         walked = blocks * (inner * vector + skip)
         middle_args(m, args, s_high=s_high, s_low=s_low, inner=inner, skip=skip, region_skip=region_bytes - walked,
                     tw_region=4 * len(tw) // regions)
-        kernel["c4"].run(m, data=dst, tw=table, args=args, blocks=blocks, regions=regions)
-        done += 2
+        kernel["c%d" % (1 << bits)].run(m, data=dst, tw=table, args=args, blocks=blocks, regions=regions)
+        done += bits
 
-    # index bit n-4 at the fourth highest position, n-5 next to the lanes
-    middle(3, n // 2, vector, 1, n >> 9, vector)
-    three = log2n % 2 == 0  # the pass before the last takes 3 bits if that makes the total fit
-    while done < log2n - (5 if three else 4):
+    if special:
+        # index bit n-4 at the fourth highest position, the next two next to the lanes
+        middle(3, 3, n // 2, vector, 1, n >> 10, 3 * vector)
+    for bits in nested:
         s_high = 8 << done
-        middle(4, s_high, 2 * s_high, 1 << (done - 4), (n // 2) // (4 * s_high), 3 * s_high)
+        middle(bits, 4, s_high, 2 * s_high, 1 << (done - 4), (n // 2) // (s_high << bits), ((1 << bits) - 1) * s_high)
+    three = last == 5
 
     count = n >> (9 if three else 8)
     tw = []

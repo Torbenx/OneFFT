@@ -9,7 +9,9 @@
  *
  * A leading argument "cache=<log2 bytes>" overrides ONEFFT_CACHE_BYTES_LOG2 of onefft.c, and
  * "shift=<bytes>" moves the input buffer relative to the output buffer (buffers with the same
- * offset in their 4 KiB page are the worst case for some cores).
+ * offset in their 4 KiB page are the worst case for some cores). For the AVX-512 plans:
+ * "tuning=<f16_to>,<f16_from>,<ordered_from>,<ordered_to>" sets the size dependent choices, see
+ * onefft_avx512_tuning in onefft.c.
  * The total time of complete transforms is printed as well.
  */
 #define _POSIX_C_SOURCE 200809L
@@ -89,6 +91,14 @@ int main(int argc, char **argv) {
     for (; argc > 1 && strchr(argv[1], '='); argv++, argc--) {
         if (!strncmp(argv[1], "cache=", 6)) onefft_tune_cache_log2 = (unsigned)atoi(argv[1] + 6);
         if (!strncmp(argv[1], "shift=", 6)) shift = (size_t)atoi(argv[1] + 6);
+#ifdef ONEFFT_AVX512
+        if (!strncmp(argv[1], "tuning=", 7)) {
+            static onefft_avx512_tuning tuning;
+            sscanf(argv[1] + 7, "%hhu,%hhu,%hhu,%hhu", &tuning.f16_to, &tuning.f16_from, &tuning.ordered_from,
+                   &tuning.ordered_to);
+            onefft_developer_tuning = &tuning;
+        }
+#endif
     }
     cycle_ns(); /* warm up, lets the frequency governor settle */
     double cycle = cycle_ns();
