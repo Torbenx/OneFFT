@@ -95,6 +95,11 @@ microseconds. It makes sizes comparable; higher is better. FFTW 3.3.10 was plann
 </picture>
 
 <picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/plots/zen5-dark.svg">
+  <img src="docs/plots/zen5.svg" alt="Line chart of the speed of OneFFT with its AVX-512 and with its AVX2 kernels, FFTW, FFmpeg and PFFFT over the transform size on an AMD EPYC 9255; the numbers are in the tables of docs/measurements.md." width="760">
+</picture>
+
+<picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/plots/intel-dark.svg">
   <img src="docs/plots/intel.svg" alt="Line chart of the speed of OneFFT, FFTW, FFmpeg and PFFFT over the transform size on an Intel i5-9600K; the numbers are in the tables of docs/measurements.md." width="760">
 </picture>
@@ -105,16 +110,20 @@ microseconds. It makes sizes comparable; higher is better. FFTW 3.3.10 was plann
 </picture>
 
 [docs/measurements.md](docs/measurements.md) has the charts and the numbers for these and for
-an AMD EPYC 7443P (Zen 3), an AMD Ryzen 7 5700U (Zen 2), a Pixel 3a (Kryo 360) and a Galaxy A50
-(Cortex-A73), and discusses what limits the speed on each of them. In short:
+an AMD EPYC 9254 (Zen 4), an AMD EPYC 7443P (Zen 3), an AMD Ryzen 7 5700U (Zen 2), a Pixel 3a
+(Kryo 360) and a Galaxy A50 (Cortex-A73), and discusses what limits the speed on each of them.
+In short:
 
-* Against FFmpeg's `av_tx`, OneFFT is 1.25 to 4.8 times faster from 16 points up (1.13 at
-  worst, for large transforms on the M2). Against PFFFT it is 1.2 to 4.5 times faster, except
+* Against FFmpeg's `av_tx`, OneFFT is 1.25 to 5.3 times faster from 16 points up (1.13 at
+  worst, for large transforms on the M2). Against PFFFT it is 1.2 to 6.3 times faster, except
   for large transforms on the M2, where the two are equal.
 * Against FFTW with patient planning it is 1.3 to 3.6 times faster up to 32 points, and 1.2 to
-  4 times faster from 8192 points up. From 64 to 4096 points the two are close: between 12%
-  slower and 21% faster, depending on the machine and the size. The M2 is the exception at
-  the top: there FFTW is up to 16% faster between 2^15 and 2^18 points.
+  5.9 times faster from 8192 points up. From 64 to 4096 points the two are close with NEON and
+  AVX2: between 14% slower and 21% faster, depending on the machine and the size. The M2 is the
+  exception at the top: there FFTW is up to 16% faster between 2^15 and 2^18 points.
+* With AVX-512 it is ahead of FFTW at every size on the two machines measured, Zen 4 and
+  Zen 5: by 1.05 to 1.5 times from 64 to 4096 points. Its AVX-512 kernels are 1.45 to 2.1 times
+  faster than its AVX2 kernels on Zen 5, and 1.1 to 1.27 times on Zen 4.
 * On Apple hardware, Apple's own vDSP is 1.2 to 2.4 times faster than OneFFT from 512 points up
   (it works on separate real and imaginary arrays and is written for exactly these cores).
 
@@ -126,9 +135,10 @@ Reproduce with `scripts/third_party.sh <target>` (fetches and builds the other l
 
 * Power-of-two sizes only, single precision only, complex data only.
 * Out of place only: `in` and `out` must not overlap.
-* The AVX-512 kernels are verified under an emulator only and are not tuned; nothing is known
-  yet about their speed. `-DONEFFT_NO_AVX512` leaves them out. The SSE2 kernels (for x86-64
-  processors without AVX2) are complete but were not tuned either.
+* The AVX-512 kernels were tuned on AMD's Zen 4 and Zen 5. On Intel processors they have only
+  run under an emulator: nothing is known about their speed there (`-DONEFFT_NO_AVX512` leaves
+  them out). The SSE2 kernels (for x86-64 processors without AVX2) are complete but were not
+  tuned either.
 * Tested on Linux, Android and macOS. Windows with MinGW or Clang should work but is untested.
 
 ## Development

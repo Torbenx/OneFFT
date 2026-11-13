@@ -204,25 +204,77 @@ for odd `n`); it exists for the few x86-64 processors without AVX2 and was not t
 
 ### AVX-512
 
-16 lanes and 32 registers: four index bits sit in the lanes, a kernel holds 8 complex vectors
-with room to spare, and scalar twiddles are embedded broadcast operands. The passes are a radix
-8 first pass, radix 4 middle passes, and two last passes that exchange two lane bits each:
+16 lanes and 32 registers: four index bits sit in the lanes, and a kernel holds 8 complex
+vectors with room to spare, or 16 if it computes in place.
 
 ```
-la3 / la2   bits (4,) 3, 2   (bit 4 across registers;) exchange and transform bit 3, then bit 2
-lb          bits 1, 0        exchange both, then transform them as in the other last passes
+f16         bits n-1 .. n-4   16 complex vectors in all 32 registers
+  or f8     bits n-1 .. n-3   followed by a c8 for bit n-4 and the two bits next to the lanes
+c8, c4      3 or 2 bits       nested middle passes
+la3 / la2   bits (4,) 3, 2    (bit 4 across registers;) exchange and transform bit 3, then bit 2
+lb          bits 1, 0         exchange both, then transform them as in the other last passes
+n32, n64, n128                complete transforms in registers
 ```
 
-Each exchange is again one shuffle per register (`unpcklps`/`unpckhps` within the 128 bit blocks,
-`vshuff32x4` between them), which works out in exactly one arrangement: index bits 3, 2, 1, 0
-trade places with output bits 3, 1, 2, 0. The top four position bits of the output therefore
-hold output bits 0, 2, 1, 3 until the last passes, and the first pass leaves the index bit that
-becomes output bit 3 at its place instead of bit reversing it.
+| n  | passes        | n  | passes           |
+|----|---------------|----|------------------|
+| 8  | 4 2 2         | 11 | 4 3 2 2          |
+| 9  | 4 3 2         | 12 | 4 3 3 2          |
+| 10 | 4 2 2 2       | 13 | 3 3 2 3 2        |
 
-These kernels are verified in simulation and under Intel's emulator (SDE), but they have not
-run on hardware and are not tuned: no radix 8 middle pass yet, and nothing is known about how
-they compare to the AVX2 kernels on a given processor. They are used from 512 points up on
-processors with AVX-512F; `-DONEFFT_NO_AVX512` leaves them out.
+(the last two numbers are `la` and `lb`). 8 and 16 points use the SSE2 and AVX2 kernels.
+
+**Lane exchanges.** Each exchange is again one shuffle per register (`unpcklps`/`unpckhps`
+within the 128 bit blocks, `vshuff32x4` between them), which works out in exactly one
+arrangement if all four partners come from the first pass: index bits 3, 2, 1, 0 trade places
+with output bits 3, 1, 2, 0. The top four position bits of the output therefore hold output
+bits 0, 2, 1, 3 until the last passes. The radix 16 first pass writes its 16 results
+accordingly. The radix 8 first pass produces only three of the four, so it leaves the index bit
+that becomes output bit 3 at its place instead of bit reversing it, and the pass that follows
+transforms that bit together with the two bits next to the lanes.
+
+**Radix 16 in 32 registers.** 16 complex vectors occupy every register, and the in-place
+operations need a constant. `f16` is therefore arranged as two layers of radix 4 that need all
+16 vectors only for a moment: the first layer transforms four groups of four vectors as they are
+loaded, the second takes one result of each group and stores its results at once. Constants
+are kept in registers, except where the last group of the first layer and the first group of the
+second leave none free: there the constant is a memory operand. The rotations by sixteenths of
+a turn are three shears each, like the twiddles of the AVX2 `la8`.
+
+Radix 16 is the cheapest pass per index bit, but it reads 16 streams and writes 16 streams
+whose cache lines land in the same sets of the first level cache once the strides are multiples
+of 4096 bytes. It is used up to 4096 points, and again for transforms that do not fit the third
+level cache, where saving a pass over the data is worth more. In between, `f8` is faster.
+
+**Complete transforms in registers.** For 32, 64 and 128 points the partners of the exchanges
+are not all there at the start: 64 points have two index bits across the registers, and the
+other two partners are results of earlier lane stages. A search over all sequences of single
+shuffles finds two that end with the lanes in output order; the one used exchanges index bits
+3, 2, 1, 0 with output bits 0, 1, 2, 3 (`CODELET_STAGES` in `avx512_kernels.py`). One builder
+generates the three kernels from it: it tracks which output bits select a register and which sit
+in which lane bit, and derives every twiddle vector from that.
+
+**What the kernels are tuned for.** Measured on Zen 4 and Zen 5
+([measurements.md](measurements.md)); no Intel processor with AVX-512 was at hand.
+
+* *Loads.* Zen 5 loads two 512 bit registers per cycle and Zen 4 one, and every memory operand
+  is a load, an embedded broadcast included. A twiddle is used two or four times, so twiddles
+  and constants are loaded into registers once: there are enough of them.
+* *Additions against multiplications.* Both cores have two units for additions and two for
+  multiplications and fused multiply-adds. A pass with twiddles uses them evenly; a pass
+  without (the first) is all additions. There, and in one stage of `c8`, a butterfly is
+  computed as `(a + b, (a + b) - 2 b)`: two additions and two fused multiply-adds.
+* *The scheduler.* The processor dispatches a whole butterfly to its floating point scheduler
+  at once, where the operations wait for the loads and then for each other. With 512 bit
+  operations Zen 5 spends a third of the time of a last pass with a full scheduler, unable to
+  accept the next butterfly. `lb` is therefore software pipelined: an iteration of its loop
+  finishes one butterfly (the transform across the registers and the stores) and begins the
+  next (loads, exchanges, twiddles), and the generator's scheduler interleaves the two. That
+  needs the registers to hold two butterflies and is limited to kernels of four vectors.
+* *Zen 4 executes 512 bit operations in two halves*: no more data per cycle than with AVX2, and
+  a 512 bit store every other cycle. Its gain over the AVX2 kernels (1.1 to 1.27 times) comes
+  from the 32 registers: fewer passes, twiddles in registers. Zen 5 has the full width: 1.45 to
+  2.1 times the AVX2 kernels.
 
 ## Large transforms
 
@@ -235,11 +287,17 @@ call over the whole output. Beyond that:
   to the next piece, and then recursively the same for the larger blocks. Every pass finds its
   data in the cache level that its block size fits into. This is worth 17% at 2^21 points on the
   older phones and nothing on cores with large caches.
-* The first pass reads the input in order and writes every butterfly to the bit reversed
-  position, that is, to scattered cache lines once the output exceeds the cache. Two
-  alternatives were measured and are slower: reading the input with a stride so that
-  consecutive butterflies write to neighbouring positions (up to 60% slower), and prefetching
-  the lines to be written (a few percent either way).
+* The first pass moves every vector to the bit reversed position. If it reads the input in
+  order, it writes to scattered cache lines once the output exceeds the cache; if it handles
+  its butterflies in the order of the output, it reads scattered lines instead. Only the table
+  that the kernel walks through differs. Which is faster depends on the core. On the AArch64
+  cores measured, reading in order is (writing in order was up to 60% slower on the older
+  phones). AMD's x86 cores handle one store that misses the cache at a time, but many loads:
+  there writing in order is 3 to 15% faster on Zen 2 and Zen 4 and up to twice as fast on Zen 5,
+  as long as input and output fit a part of the third level cache, and slower beyond. The x86
+  plans choose by the size of that cache (`onefft_x86_tuning` in `onefft.c`); processors that
+  were not measured read in order. Prefetching the scattered lines, for reading or for
+  writing, gained nothing anywhere.
 * The last pass walks 8 (4) streams and the twiddle table in order.
 
 ## Why not ...
@@ -253,7 +311,7 @@ with four times as many instructions. Loading whole vectors and treating the lan
 independent columns is cheaper per stage even though it needs more passes.
 
 **... radix 16 passes on AArch64?** 16 complex vectors are 32 registers. Nothing would be left
-for intermediate results, and the in-place tricks of the AVX2 kernels need memory operands.
+for intermediate results, and the in-place tricks of the x86 kernels need memory operands.
 
 **... LD2/ST2 to split and interleave?** `ldp` + `uzp1`/`uzp2` and `zip1`/`zip2` + `stp` are
 never slower on the cores measured and faster on some (LD2 and ST2 run at one per cycle on
@@ -272,7 +330,7 @@ Cortex-X4 and Apple M2), and they have no addressing restrictions.
 * `cplx.py` builds complex arithmetic and FFT networks from those methods, independent of the
   target. It tracks pending multiplications by `-i` symbolically so that they cost nothing.
 * `passes.py` has the loop structure shared by the pass kernels of all targets.
-* `neon_kernels.py` and `x86_kernels.py` describe the kernels in terms of the above: a kernel is
+* `neon_kernels.py`, `x86_kernels.py` and `avx512_kernels.py` describe the kernels in terms of the above: a kernel is
   typically 30 lines.
 * `model.py` is a Python model of the driver in `src/onefft.c`; `gen/test_kernels.py` uses it to
   run complete transforms in simulation against a reference FFT. A kernel bug is found in a
@@ -296,8 +354,9 @@ can overlap the end of one butterfly with the start of the next. Both together a
 The scheduler needs to know which loads and stores may touch the same memory. Kernels follow one
 rule that makes this trivial: accesses through different address registers never overlap.
 
-On x86-64 the order of the instructions made no measurable difference (the out-of-order windows
-are large), and the loops are not unrolled there.
+On x86-64 the order of the instructions within a butterfly made no measurable difference (the
+out-of-order windows are large), and the loops are not unrolled there. What does matter with
+AVX-512 is overlapping consecutive butterflies, see "The scheduler" above.
 
 ## The runtime
 
@@ -306,7 +365,8 @@ that calls the kernels, a portable C implementation for targets without kernels,
 interface. Every instruction set provides kernels of the same four kinds (complete small
 transform, first, middle and last pass) with the same signatures, so one driver serves all of
 them; only the code that decides on the passes and fills the tables is specific. On x86-64 the
-instruction set is chosen when a plan is created.
+instruction set is chosen when a plan is created, and so are the two choices that depend on the
+processor's caches: the order of the first pass and the sizes with a radix 16 first pass.
 
 Plans are immutable after creation, so one plan can be used from any number of threads at the
 same time. The functions without plans keep one plan per size and direction in a table of

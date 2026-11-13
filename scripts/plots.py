@@ -28,6 +28,8 @@ MACHINES = {  # file name: chart title
     "m2": "Apple M2, AArch64",
     "pixel3a": "Kryo 360 Gold (Google Pixel 3a), AArch64",
     "a50": "Cortex-A73 (Samsung Galaxy A50), AArch64",
+    "zen5": "AMD EPYC 9255 (Zen 5), AVX-512",
+    "zen4": "AMD EPYC 9254 (Zen 4), AVX-512",
     "intel": "Intel Core i5-9600K (Skylake), AVX2",
     "epyc": "AMD EPYC 7443P (Zen 3), AVX2",
     "zen2": "AMD Ryzen 7 5700U (Zen 2), AVX2",
@@ -37,6 +39,7 @@ MACHINES = {  # file name: chart title
 # chart. Colours and their order are a palette validated for colour vision deficiencies.
 SERIES = [  # result name, label, light colour, dark colour
     ("onefft", "OneFFT", "#2a78d6", "#3987e5"),
+    ("onefft_avx2", "OneFFT, AVX2 kernels", "#2a78d6", "#3987e5"),  # a variant: OneFFT's colour, dashed
     ("fftw", "FFTW", "#eb6834", "#d95926"),
     ("ffmpeg", "FFmpeg", "#1baf7a", "#199e70"),
     ("pffft", "PFFFT", "#eda100", "#c98500"),
@@ -49,6 +52,10 @@ THEMES = {
     "-dark": {"surface": "#1a1a19", "primary": "#f0efec", "secondary": "#c3c2b7", "muted": "#898781",
               "grid": "#2c2c2a", "axis": "#383835", "colour": 3},
 }
+
+# Variants of a library are drawn dashed in its colour; the value is the short label at the line end.
+VARIANTS = {"onefft_avx2": "AVX2"}
+DASHED = (0, (2.5, 2.5))
 
 FONT = "system-ui, -apple-system, 'Segoe UI', 'DejaVu Sans', sans-serif"
 MIN_SIZE = 4  # smaller transforms are a handful of operations and say nothing about speed
@@ -124,13 +131,13 @@ def chart(title, data, theme):
         colour = colours[theme["colour"] - 2]
         xs, ys = zip(*data[name])
         ax.plot(xs, ys, color=colour, linewidth=2, solid_capstyle="round", solid_joinstyle="round",
-                zorder=3 if name == "onefft" else 2)
+                dash_capstyle="round", linestyle=DASHED if name in VARIANTS else "-", zorder=3 if name == "onefft" else 2)
         ax.plot(xs[-1:], ys[-1:], marker="o", markersize=8, markerfacecolor=colour, markeredgecolor=theme["surface"],
                 markeredgewidth=2, zorder=4, clip_on=False)
 
     # direct labels at the line ends, moved apart where the lines end close together and then
     # tied to their line with a thin leader
-    ends = sorted((data[name][-1][1], label) for name, label, *_ in series)
+    ends = sorted((data[name][-1][1], VARIANTS.get(name, label)) for name, label, *_ in series)
     gap = y_max * 0.058
     placed = spread([y for y, _ in ends], gap)
     x_end, x_text = 1 << 20, (1 << 20) * 2.1
@@ -146,9 +153,10 @@ def chart(title, data, theme):
     x = 0.022
     for name, label, *colours in series:
         colour = colours[theme["colour"] - 2]
-        fig.add_artist(plt.Line2D([x, x + 0.03], [0.825, 0.825], color=colour, linewidth=2, solid_capstyle="round"))
+        fig.add_artist(plt.Line2D([x, x + 0.03], [0.825, 0.825], color=colour, linewidth=2, solid_capstyle="round",
+                                  dash_capstyle="round", linestyle=(0, (1.2, 2.2)) if name in VARIANTS else "-"))
         fig.text(x + 0.038, 0.825, label, color=theme["secondary"], fontsize=9, va="center")
-        x += 0.052 + 0.0125 * len(label)
+        x += 0.052 + (0.0108 if name in VARIANTS else 0.0125) * len(label)  # long labels run narrower per letter
     fig.text(0.875, 0.045, "n", color=theme["muted"], fontsize=9, va="center", ha="right", style="italic")
     return fig
 

@@ -5,8 +5,9 @@ and redraws the charts in docs/plots (scripts/plots.py).
     scripts/update_docs.py
 
 docs/results holds the output of bench/bench.c per machine: pixel3a.txt, a50.txt, s24.txt,
-m2.txt, zen2.txt, intel.txt, epyc.txt, intel_sse2.txt. A table is placed between the markers
-<!-- results:NAME --> and <!-- end -->.
+m2.txt, zen2.txt, intel.txt, epyc.txt, zen4.txt, zen5.txt, intel_sse2.txt. In the last two but
+one, the lines "onefft_avx2" are OneFFT built with -DONEFFT_NO_AVX512. A table is placed between
+the markers <!-- results:NAME --> and <!-- end -->.
 """
 
 import os
@@ -15,7 +16,8 @@ import subprocess
 import sys
 
 ROOT = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
-TITLES = {"onefft": "OneFFT", "fftw": "FFTW", "ffmpeg": "FFmpeg", "pffft": "PFFFT", "vdsp": "vDSP"}
+TITLES = {"onefft": "OneFFT", "onefft_avx2": "OneFFT (AVX2)", "fftw": "FFTW", "ffmpeg": "FFmpeg", "pffft": "PFFFT",
+          "vdsp": "vDSP"}
 
 
 def table(path, sizes):

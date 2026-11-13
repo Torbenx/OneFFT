@@ -15,20 +15,29 @@ before trying to make something faster.
 | Laptop | AMD Ryzen 7 5700U (Zen 2), 4.3 GHz | AVX2 |
 | Desktop | Intel Core i5-9600K (Skylake), 4.5 GHz | AVX2 |
 | Server | AMD EPYC 7443P (Zen 3) | AVX2 |
+| Server | AMD EPYC 9254 (Zen 4), 4.1 GHz | AVX-512 |
+| Server | AMD EPYC 9255 (Zen 5), 4.3 GHz | AVX-512 |
 
 All times are for one forward transform, single thread, pinned to the fastest cores on the
 phones, minimum over 15 samples of at least 5 ms each (`bench/bench.c`). Every library is called
 through its out-of-place interface on interleaved data, except vDSP, which only has split real
 and imaginary arrays and is given those (the conversion is not timed, which favours it).
 
-* FFTW 3.3.10, single precision, NEON or AVX2 enabled, `FFTW_PATIENT` plans up to 4096 points
-  and `FFTW_MEASURE` above (patient planning of large sizes takes minutes).
+* FFTW 3.3.10, single precision, NEON or AVX2 and AVX-512 enabled, `FFTW_PATIENT` plans up to
+  4096 points and `FFTW_MEASURE` above (patient planning of large sizes takes minutes).
 * FFmpeg 7.1, `av_tx` with `AV_TX_FLOAT_FFT`, with its assembly for the target.
 * PFFFT (the marton78 fork), `pffft_transform_ordered`; SSE or NEON, it has no AVX kernels.
 * vDSP from Accelerate, `vDSP_DFT_Execute`.
 
 `scripts/third_party.sh` builds the libraries and `scripts/build_bench.sh` the benchmark.
 Compilers: Clang 18 (Android NDK r27c), Apple Clang 21, GCC 15.
+
+Zen 4, Zen 5 and Zen 2 were measured with the input buffer at the start of a page and the
+output buffer 2048 bytes behind one. Where the two sit relative to each other matters for small
+transforms on Zen 4: with the same offset in their pages, loads of the next transform wait for
+stores of the previous one, and FFTW takes 56 instead of 29 ns for 64 points, OneFFT 56 instead
+of 47 ns for 128. The other machines were measured earlier, with buffers wherever the allocator
+put them; the Zen 3 and Skylake servers were not available again.
 
 ## Results
 
@@ -187,6 +196,83 @@ the time of OneFFT.
 
 </details>
 
+### AMD EPYC 9255 (Zen 5), AVX-512
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="plots/zen5-dark.svg">
+  <img src="plots/zen5.svg" alt="Line chart of the speed of OneFFT with its AVX-512 and with its AVX2 kernels, FFTW, FFmpeg and PFFFT over the transform size on an AMD EPYC 9255; the numbers are in the tables below." width="760">
+</picture>
+
+"OneFFT (AVX2)" is OneFFT built with `-DONEFFT_NO_AVX512`. FFTW and FFmpeg use AVX-512 where
+they have code for it.
+
+<details>
+<summary>Times in nanoseconds</summary>
+
+<!-- results:zen5 -->
+| n | OneFFT | OneFFT (AVX2) | FFTW | FFmpeg | PFFFT | vs OneFFT (AVX2) | vs FFTW | vs FFmpeg | vs PFFFT |
+|--:|--:|--:|--:|--:|--:|--:|--:|--:|--:|
+| 2 | 1.1 | 1.1 | 3.2 | 1.6 | - | 1.00 | 2.91 | 1.45 | - |
+| 4 | 1.8 | 1.8 | 4.5 | 1.6 | - | 1.00 | 2.50 | 0.89 | - |
+| 8 | 3.8 | 3.8 | 6.9 | 2.9 | - | 1.00 | 1.82 | 0.76 | - |
+| 16 | 4.6 | 4.6 | 13.5 | 6.7 | 17.4 | 1.00 | 2.93 | 1.46 | 3.78 |
+| 32 | 6.7 | 9.8 | 15.3 | 14.0 | 26.8 | 1.46 | 2.28 | 2.09 | 4.00 |
+| 64 | 14.6 | 25.9 | 21.6 | 49.3 | 59.7 | 1.77 | 1.48 | 3.38 | 4.09 |
+| 128 | 26.2 | 48.5 | 32.4 | 97.4 | 129.5 | 1.85 | 1.24 | 3.72 | 4.94 |
+| 256 | 52.8 | 106.3 | 67.0 | 214.5 | 286.3 | 2.01 | 1.27 | 4.06 | 5.42 |
+| 512 | 109.9 | 219.8 | 140.3 | 453.3 | 651.1 | 2.00 | 1.28 | 4.12 | 5.92 |
+| 1024 | 234.4 | 494.4 | 341.1 | 964.9 | 1395 | 2.11 | 1.46 | 4.12 | 5.95 |
+| 2048 | 491.8 | 1017 | 718.5 | 2031 | 3108 | 2.07 | 1.46 | 4.13 | 6.32 |
+| 4096 | 1267 | 2345 | 1639 | 4599 | 6545 | 1.85 | 1.29 | 3.63 | 5.16 |
+| 8192 | 3324 | 5192 | 5701 | 12746 | 14185 | 1.56 | 1.72 | 3.84 | 4.27 |
+| 16384 | 6880 | 12183 | 12957 | 36176 | 29410 | 1.77 | 1.88 | 5.26 | 4.27 |
+| 32768 | 14928 | 24674 | 34258 | 78244 | 64482 | 1.65 | 2.29 | 5.24 | 4.32 |
+| 65536 | 36592 | 57979 | 83225 | 173332 | 135790 | 1.58 | 2.27 | 4.74 | 3.71 |
+| 131072 | 84447 | 122116 | 187263 | 430886 | 312061 | 1.45 | 2.22 | 5.10 | 3.70 |
+| 262144 | 164064 | 254913 | 406242 | 846404 | 667342 | 1.55 | 2.48 | 5.16 | 4.07 |
+| 524288 | 356344 | 536425 | 2092234 | 1872943 | 1314524 | 1.51 | 5.87 | 5.26 | 3.69 |
+| 1048576 | 951749 | 1470756 | 4200779 | 4741443 | 2767490 | 1.55 | 4.41 | 4.98 | 2.91 |
+<!-- end -->
+
+</details>
+
+### AMD EPYC 9254 (Zen 4), AVX-512
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="plots/zen4-dark.svg">
+  <img src="plots/zen4.svg" alt="Line chart of the speed of OneFFT with its AVX-512 and with its AVX2 kernels, FFTW, FFmpeg and PFFFT over the transform size on an AMD EPYC 9254; the numbers are in the tables below." width="760">
+</picture>
+
+<details>
+<summary>Times in nanoseconds</summary>
+
+<!-- results:zen4 -->
+| n | OneFFT | OneFFT (AVX2) | FFTW | FFmpeg | PFFFT | vs OneFFT (AVX2) | vs FFTW | vs FFmpeg | vs PFFFT |
+|--:|--:|--:|--:|--:|--:|--:|--:|--:|--:|
+| 2 | 1.7 | 1.7 | 4.8 | 2.2 | - | 1.00 | 2.82 | 1.29 | - |
+| 4 | 3.1 | 3.1 | 5.3 | 1.9 | - | 1.00 | 1.71 | 0.61 | - |
+| 8 | 4.6 | 4.6 | 9.2 | 3.9 | - | 1.00 | 2.00 | 0.85 | - |
+| 16 | 5.1 | 5.4 | 17.7 | 8.3 | 21.3 | 1.06 | 3.47 | 1.63 | 4.18 |
+| 32 | 11.2 | 11.5 | 20.2 | 16.7 | 33.4 | 1.03 | 1.80 | 1.49 | 2.98 |
+| 64 | 25.7 | 30.3 | 28.9 | 41.8 | 73.9 | 1.18 | 1.12 | 1.63 | 2.88 |
+| 128 | 46.7 | 53.9 | 50.6 | 85.2 | 156.4 | 1.15 | 1.08 | 1.82 | 3.35 |
+| 256 | 95.4 | 116.1 | 100.5 | 194.7 | 315.2 | 1.22 | 1.05 | 2.04 | 3.30 |
+| 512 | 207.9 | 242.3 | 220.7 | 408.9 | 695.3 | 1.17 | 1.06 | 1.97 | 3.34 |
+| 1024 | 452.2 | 547.6 | 500.4 | 885.9 | 1446 | 1.21 | 1.11 | 1.96 | 3.20 |
+| 2048 | 1007 | 1167 | 1151 | 1984 | 3456 | 1.16 | 1.14 | 1.97 | 3.43 |
+| 4096 | 2328 | 2947 | 2730 | 5303 | 6857 | 1.27 | 1.17 | 2.28 | 2.95 |
+| 8192 | 5588 | 6115 | 8582 | 17762 | 14772 | 1.09 | 1.54 | 3.18 | 2.64 |
+| 16384 | 11767 | 13132 | 19124 | 45654 | 30717 | 1.12 | 1.63 | 3.88 | 2.61 |
+| 32768 | 25478 | 29001 | 43110 | 102702 | 69102 | 1.14 | 1.69 | 4.03 | 2.71 |
+| 65536 | 56942 | 68772 | 102740 | 229704 | 156611 | 1.21 | 1.80 | 4.03 | 2.75 |
+| 131072 | 121054 | 142349 | 269067 | 516227 | 333202 | 1.18 | 2.22 | 4.26 | 2.75 |
+| 262144 | 262310 | 311763 | 550616 | 1085104 | 690566 | 1.19 | 2.10 | 4.14 | 2.63 |
+| 524288 | 552103 | 660058 | 2826413 | 2429432 | 1464796 | 1.20 | 5.12 | 4.40 | 2.65 |
+| 1048576 | 1356126 | 1588827 | 5843846 | 5781116 | 3243614 | 1.17 | 4.31 | 4.26 | 2.39 |
+<!-- end -->
+
+</details>
+
 ### Intel Core i5-9600K (Skylake), AVX2
 
 <picture>
@@ -231,6 +317,10 @@ the time of OneFFT.
   <img src="plots/epyc.svg" alt="Line chart of the speed of OneFFT, FFTW, FFmpeg and PFFFT over the transform size on an AMD EPYC 7443P; the numbers are in the tables below." width="760">
 </picture>
 
+Measured before the first pass learned to write in order (see "Decisions and their effect").
+On Zen 2 and Zen 4 that made 8192 to 524288 points 5 to 15% faster with the AVX2 kernels; the
+same is to be expected here.
+
 <details>
 <summary>Times in nanoseconds</summary>
 
@@ -274,26 +364,26 @@ the time of OneFFT.
 <!-- results:zen2 -->
 | n | OneFFT | FFTW | FFmpeg | PFFFT | vs FFTW | vs FFmpeg | vs PFFFT |
 |--:|--:|--:|--:|--:|--:|--:|--:|
-| 2 | 1.8 | 6.5 | 1.8 | - | 3.61 | 1.00 | - |
+| 2 | 1.8 | 6.5 | 1.9 | - | 3.61 | 1.06 | - |
 | 4 | 3.6 | 7.7 | 2.8 | - | 2.14 | 0.78 | - |
 | 8 | 6.7 | 12.5 | 6.3 | - | 1.87 | 0.94 | - |
-| 16 | 8.0 | 24.9 | 11.6 | 26.9 | 3.11 | 1.45 | 3.36 |
-| 32 | 15.3 | 23.7 | 22.9 | 42.7 | 1.55 | 1.50 | 2.79 |
-| 64 | 39.8 | 37.0 | 62.1 | 93.1 | 0.93 | 1.56 | 2.34 |
-| 128 | 73.7 | 71.1 | 119.9 | 199.2 | 0.96 | 1.63 | 2.70 |
-| 256 | 160.2 | 141.4 | 267.8 | 400.5 | 0.88 | 1.67 | 2.50 |
-| 512 | 336.2 | 297.8 | 582.7 | 900.8 | 0.89 | 1.73 | 2.68 |
-| 1024 | 746.0 | 680.3 | 1272 | 1873 | 0.91 | 1.70 | 2.51 |
-| 2048 | 1588 | 1604 | 2809 | 4307 | 1.01 | 1.77 | 2.71 |
-| 4096 | 3643 | 3863 | 6518 | 8946 | 1.06 | 1.79 | 2.46 |
-| 8192 | 8372 | 11358 | 19485 | 19853 | 1.36 | 2.33 | 2.37 |
-| 16384 | 19155 | 25798 | 53730 | 40297 | 1.35 | 2.81 | 2.10 |
-| 32768 | 45195 | 63824 | 140184 | 89924 | 1.41 | 3.10 | 1.99 |
-| 65536 | 100217 | 157656 | 319324 | 191534 | 1.57 | 3.19 | 1.91 |
-| 131072 | 210283 | 354244 | 695371 | 437177 | 1.68 | 3.31 | 2.08 |
-| 262144 | 664179 | 958076 | 2027876 | 1695287 | 1.44 | 3.05 | 2.55 |
-| 524288 | 2314376 | 4944622 | 6598050 | 6744829 | 2.14 | 2.85 | 2.91 |
-| 1048576 | 5453541 | 10560793 | 14855047 | 14103937 | 1.94 | 2.72 | 2.59 |
+| 16 | 8.1 | 25.0 | 11.5 | 27.2 | 3.09 | 1.42 | 3.36 |
+| 32 | 15.4 | 25.4 | 23.0 | 42.9 | 1.65 | 1.49 | 2.79 |
+| 64 | 40.3 | 37.6 | 61.8 | 93.2 | 0.93 | 1.53 | 2.31 |
+| 128 | 75.3 | 74.7 | 119.1 | 199.8 | 0.99 | 1.58 | 2.65 |
+| 256 | 168.8 | 144.8 | 269.9 | 404.7 | 0.86 | 1.60 | 2.40 |
+| 512 | 340.1 | 324.4 | 593.3 | 903.2 | 0.95 | 1.74 | 2.66 |
+| 1024 | 754.1 | 709.4 | 1272 | 1885 | 0.94 | 1.69 | 2.50 |
+| 2048 | 1569 | 1637 | 2808 | 4302 | 1.04 | 1.79 | 2.74 |
+| 4096 | 3787 | 4006 | 6616 | 9199 | 1.06 | 1.75 | 2.43 |
+| 8192 | 8115 | 11569 | 19444 | 19730 | 1.43 | 2.40 | 2.43 |
+| 16384 | 18999 | 27932 | 54369 | 40927 | 1.47 | 2.86 | 2.15 |
+| 32768 | 39941 | 69636 | 155828 | 93463 | 1.74 | 3.90 | 2.34 |
+| 65536 | 86095 | 160752 | 316536 | 199715 | 1.87 | 3.68 | 2.32 |
+| 131072 | 221772 | 345542 | 666672 | 483800 | 1.56 | 3.01 | 2.18 |
+| 262144 | 620910 | 991851 | 1981086 | 1621658 | 1.60 | 3.19 | 2.61 |
+| 524288 | 2279444 | 5008482 | 6511931 | 6622131 | 2.20 | 2.86 | 2.91 |
+| 1048576 | 5409455 | 10718990 | 14779559 | 13809826 | 1.98 | 2.73 | 2.55 |
 <!-- end -->
 
 </details>
@@ -324,16 +414,21 @@ SSE. They were not tuned.
 
 ### Summary
 
-* Against FFmpeg, OneFFT is 1.25 to 4.8 times faster from 16 points up, on every machine (1.13
-  at worst, for large transforms on the M2). Against PFFFT 1.2 to 4.5 times, except for large
+* Against FFmpeg, OneFFT is 1.25 to 5.3 times faster from 16 points up, on every machine (1.13
+  at worst, for large transforms on the M2). Against PFFFT 1.2 to 6.3 times, except for large
   transforms on the M2, where the two are equal. At 4 and 8 points FFmpeg's dedicated kernels
   are up to 1.3 times faster than OneFFT's.
 * Against patient FFTW there are three ranges. Up to 32 points OneFFT's single kernels are 1.3 to
-  3.6 times faster. From 8192 points up OneFFT is 1.2 to 4 times faster: its passes stay cache
+  3.6 times faster. From 8192 points up OneFFT is 1.2 to 5.9 times faster: its passes stay cache
   friendly, and FFTW's measured (not patient) plans are weaker. Between 64 and 4096 points both
-  are close, OneFFT being between 12% slower and 21% faster (ahead at every size on the
-  Cortex-X4, behind at most on Zen 2); FFTW's patient planner picks large generated codelets
-  there that need very few passes.
+  are close with NEON and AVX2, OneFFT being between 14% slower and 21% faster (ahead at every
+  size on the Cortex-X4, behind at most on Zen 2); FFTW's patient planner picks large generated
+  codelets there that need very few passes.
+* With AVX-512, OneFFT is ahead of FFTW (which has AVX-512 codelets) at every size, also between
+  64 and 4096 points: by 1.24 to 1.5 times there on Zen 5 and by 1.05 to 1.17 times on Zen 4.
+  Against its own AVX2 kernels on the same machine it is 1.45 to 2.1 times faster on Zen 5 from
+  32 points up, and 1.1 to 1.27 times on Zen 4 from 64 points up; a 512 bit operation is two 256
+  bit operations on Zen 4.
 * The M2 is different at the top: between 2^15 and 2^18 points FFTW is up to 16% faster there,
   and PFFFT is as fast as OneFFT. This was not investigated.
 * Apple's vDSP is in a class of its own on the M2: 1.2 to 2.4 times faster than OneFFT from 512
@@ -413,6 +508,52 @@ What follows:
   On Zen 2, stores additionally occupy one of the two addition units.
 * Moving the 128 bit halves of registers around is slow everywhere. `lb` does it while loading.
 
+### x86-64: 512 bit instructions per cycle
+
+| | Zen 4 | Zen 5 |
+|---|--:|--:|
+| loads | 1 | 2 |
+| stores | 0.5 | 1 |
+| additions | 1 | 2 |
+| multiplications, fused multiply-adds | 1 | 2 |
+| additions and multiplications together | 2 | 4 |
+| `unpck`, `shufps` | 1.5 | 4 |
+| `vshuff32x4` | 1 | 2 |
+| cycles for a load, two multiplications by a twiddle vector and a store: twiddle as memory operands / loaded into a register | 3.2 / 2.2 | 1.5 / 1.0 |
+
+(`bench/uops_x86.c` built with `-DWIDE -mavx512f`.) What follows:
+
+* **Zen 4 executes a 512 bit operation as two of 256 bits.** It moves no more data per cycle
+  than with AVX2, and stores one register every other cycle. What AVX-512 gives it is 32
+  registers: higher radix, so fewer passes and fewer stores, and twiddles in registers.
+* **Zen 5 has the full width**, twice the arithmetic of its 256 bit operations per cycle. It
+  does not store more data per cycle than with AVX2 either (one 512 bit register or two of 256
+  bits), so stores weigh twice as much relative to arithmetic.
+* **A memory operand is a load**, an embedded broadcast of a scalar as well, and loads are
+  scarce: the last row of the table. The kernels as first written (scalar twiddles as embedded
+  broadcasts, twiddle vectors as memory operands, as in the AVX2 kernels that have no registers
+  to spare) were limited by loads. A radix 4 middle pass has 8 loads of data and used 12 for its
+  twiddles; with the twiddles broadcast into registers it has 6.
+* **Additions and multiplications run on separate units**, two each. A butterfly with a twiddle
+  is four of each. A butterfly without is four additions, or two additions and two fused
+  multiply-adds as `(a + b, (a + b) - 2 b)`: the first passes are built from those. The radix 8
+  first pass went from 66 to 44 cycles per butterfly on Zen 4. On Zen 5 it only paid off
+  together with the constant in a register (34 to 27 cycles; with the constant as an embedded
+  broadcast the 24 additional loads ate the gain).
+* **The kernels reach 2.7 to 3.2 of the 4 operations per cycle on Zen 5.** The processor's
+  counters say why: in the last passes the floating point scheduler is full during 35 to 40% of
+  the cycles (20% in the first pass, never in the radix 4 middle pass), and no further
+  instructions are accepted then. A butterfly is dispatched as a whole and its operations wait
+  for each other. Knocking parts out of the last pass `lb` shows no single culprit: it takes
+  19.2 cycles per butterfly, 13.3 without its twiddle multiplications, 12.9 without its
+  butterflies, 13.5 without its exchanges, and 8.1 with loads and stores alone. Overlapping
+  consecutive butterflies in the instruction stream (software pipelining) helps: 16.1 cycles.
+* **Stores that miss the cache are handled one at a time, loads in parallel.** The radix 8
+  first pass takes 27 cycles per butterfly on Zen 5 while everything is in the first level
+  cache. At 2^17 points it takes 285 if it reads in order and writes its 16 cache lines to
+  scattered places, and 100 if it writes in order and reads scattered. Zen 4: 44 in the cache,
+  then 147 and 123.
+
 ## Decisions and their effect
 
 Times in ns for 1024 points unless stated.
@@ -427,12 +568,48 @@ Times in ns for 1024 points unless stated.
 | Radix 8 first pass (AVX2, odd number of index bits), 512 points | Skylake 369 to 319, Zen 3 426 to 385 |
 | Radix 8 pass before the last (AVX2, even number of index bits) | Skylake 745 to 680, Zen 3 unchanged, Zen 2 767 to 749 |
 
+AVX-512, measured when the kernels first ran on hardware. Zen 5 / Zen 4, in ns:
+
+| change | effect |
+|---|---|
+| Twiddles and constants in registers instead of memory operands | 1024 points: 285 to 262 / unchanged |
+| Radix 16 first pass (up to 4096 points) | 1024 points: 258 to 231 / 474 to 453; 4096 points: 1405 to 1318 / 2720 to 2325 |
+| Software pipelined last pass | 19.2 to 16.1 / 36 to 31 cycles per butterfly, 4% of a transform |
+| 256 points in AVX-512 passes instead of the AVX2 plan | 107 to 54 / 117 to 96 |
+| Single kernels for 32, 64, 128 points | 64 points: 25.6 to 14.7 / 30.3 to 25.7; 128 points: 48.5 to 26.3 / 54.4 to 46.6 |
+| Radix 8 middle pass | up to 5% from 4096 points up |
+| First pass writes in order, 2^14 to 2^20 points (Zen 4: to 2^19) | 2^15 points: 22.9 to 15.6 us / 27.7 to 26.7 us; 2^18 points: 297 to 175 us / 291 to 268 us |
+| The same with the AVX2 kernels, 2^13 points up | 2^18 points: 505 to 257 us / 345 to 315 us; Zen 2 at 2^16: 100 to 86 us |
+| All of it | 1024 points: 285 to 234 / 502 to 452; 2^18 points: 295 to 164 us / 277 to 262 us |
+
+The order of the first pass and the sizes with a radix 16 first pass depend on the processor's
+caches. Writing in order stops paying off when input and output together exceed a quarter of
+the third level cache (Zen 2 with 4 MiB: beyond 2^16 points; Zen 4 with 32 MiB: beyond 2^19),
+on Zen 5 half of it (2^20). Beyond that, reading in order is up to 25% faster. The plan reads
+the cache size from the processor (`onefft_x86_tune` in `onefft.c`). The radix 16 first pass
+loses against radix 8 from 8192 points up (by up to 25%: its 16 input and 16 output streams
+are a multiple of 4096 bytes apart then) and wins again by 3 to 10% when the data no longer
+fits the third level cache.
+
 Tried and dropped:
 
 * **First pass reading with a stride** so that consecutive butterflies write next to each other
   instead of to bit reversed positions: 2^21 points on the Pixel 3a took 64 ms instead of 43 ms.
+  (This is what AMD's x86 cores want for medium sizes, see above.)
 * **Prefetching the scattered output lines of the first pass:** 3% faster on the Pixel 3a at
-  2^21 points, 4 to 10% slower on the S24.
+  2^21 points, 4 to 10% slower on the S24. With AVX-512, prefetching the lines to be written
+  (reading in order) or to be read (writing in order) one to eight butterflies ahead: no gain
+  on Zen 5, 10 to 30% slower first pass on Zen 4.
+* **Embedded broadcasts for scalar twiddles (AVX-512):** the middle pass takes 15.5 instead of
+  12.7 cycles per butterfly on Zen 5. On Zen 4 it is the other way round, 19.6 against 22.3, but
+  a whole transform takes the same time there either way.
+* **Loading the next butterfly's data an iteration ahead** without pipelining anything else: 3%.
+* **Splitting the interleaved input with two loads and register shuffles** instead of one load
+  and two shuffles with a memory operand (AVX-512): no gain on Zen 5, slower on Zen 4.
+* **Other pass structures with AVX-512:** radix 4 middle passes before the radix 8 ones instead
+  of after, and 4 against 5 index bits for the last two passes where both need the same number
+  of passes: within 2%, except at 2048 points, where radix 8 with `la2` is 5% faster than radix 4
+  with `la3` on both machines (and is used).
 * **`ldr`/`str` instead of `ldp`/`stp`:** `ldp` looks very slow in isolation on the Kryo
   (table above), but in the kernels the pair forms are equal or better on every core.
 * **A radix 4 last pass where possible** (it has fewer twiddle multiplications): slower. Per
@@ -457,11 +634,37 @@ operations. On the Kryo that is the time, plus loads and stores. On the X4 and t
 of four operations per cycle would be 14, 21 and 30 cycles; the first and last pass also
 shuffle to split and interleave the data.
 
+The AVX-512 kernels, in cycles per butterfly while the data is in the first level cache
+(`bench/passes.c plain=1`, 1024 and 4096 points):
+
+| | `f16` | `f8` | `c8` | `c4` | `la3` | `la2` | `lb` |
+|---|--:|--:|--:|--:|--:|--:|--:|
+| complex vectors of 16 values, index bits | 16, 4 | 8, 3 | 8, 3 | 4, 2 | 8, 3 | 4, 2 | 4, 2 |
+| arithmetic and shuffle operations | 184 | 72 | 84 | 28 | 128 | 48 | 52 |
+| loads (twiddles and constants included), stores | 72, 32 | 24, 16 | 30, 16 | 14, 8 | 32, 16 | 14, 8 | 14, 8 |
+| Zen 5, cycles | 61 | 27 | 32 | 11 to 13 | 50 | 17 | 16 |
+| Zen 4, cycles | 125 | 44 | 64 | 23 | 91 | 32 | 31 |
+| Zen 5, cycles per vector and index bit | 0.95 | 1.1 | 1.3 | 1.5 | 2.1 | 2.1 | 2.0 |
+| Zen 4, cycles per vector and index bit | 2.0 | 1.8 | 2.7 | 2.9 | 3.8 | 4.0 | 3.9 |
+
+On Zen 4 the cycles are close to loads plus twice the stores: it is limited by memory
+operations. On Zen 5 they follow the operation count at about 3 per cycle. On both, the index
+bits in the lanes cost twice as much as the others, because every exchange is two shuffles per
+vector.
+
 What would be needed to be substantially faster:
 
 * On the 64 bit wide cores: fewer operations, and the count is already at the level of FFTW's
   generated codelets. A radix 16 or 32 pass does not fit 32 registers without spilling.
 * On the current AArch64 cores: closing the gap between 3.2 and 4 operations per cycle, and the
   cost of split and interleave, which vDSP does not have.
-* On x86: kernels per vendor (see above), and AVX-512, where 32 registers and embedded
-  broadcasts allow radix 8 everywhere.
+* On x86 with AVX2: kernels per vendor (see above).
+* With AVX-512, what was not built: a pair of last passes for 6 index bits (the lane exchange of
+  index bit 3 after two bits across the registers, then three exchanges in one pass of 8
+  vectors). It would save a pass at every third size, 1024 points among them; estimated from
+  the table above 15% on Zen 4 and 5% on Zen 5 there. Middle passes whose blocks are a single
+  butterfly (the first one of every transform) load the same twiddles for every butterfly of a
+  region; a variant that keeps them in registers would save 6 or 14 loads per butterfly, about
+  5% of a transform on Zen 4. And nothing is known about Intel's processors with AVX-512, which
+  have one shuffle unit and share two units between additions and multiplications: the kernels
+  were tuned without one.

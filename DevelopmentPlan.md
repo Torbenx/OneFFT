@@ -47,7 +47,7 @@ R6. Final review and polish
 ## Status (written by the implementation sessions)
 
 Done and verified. Tests pass on Pixel 3a, Galaxy A50, Galaxy S24, Apple M2, the Zen 2 laptop,
-the Intel i5-9600K and the EPYC 7443P.
+the Intel i5-9600K, the EPYC 7443P (Zen 3), the EPYC 9254 (Zen 4) and the EPYC 9255 (Zen 5).
 
 * A1/A2  Reference built, validated and benchmarked against FFTW, FFmpeg, PFFFT, KissFFT, vDSP.
 * A3-A7  AArch64 for all power-of-two sizes, forward and inverse: kernel generator with
@@ -59,18 +59,28 @@ the Intel i5-9600K and the EPYC 7443P.
 * X6/X7  SSE2: complete and tested, not tuned (every x86-64 machine at hand has AVX2).
 * R1-R3  C and C++ interface (include/onefft.h), single file distribution (dist/), CMake, Bazel.
 * R5     README.md, docs/design.md, docs/measurements.md.
+* X8/X9  AVX-512, measured and tuned on Zen 4 and Zen 5: radix 16 first pass in 32 registers,
+         radix 8 middle pass, single kernels for 32 to 128 points, twiddles in registers, a
+         software pipelined last pass. The x86 plans choose the order of the first pass (reading
+         or writing in order) and the sizes with a radix 16 first pass by the third level cache
+         of the processor. Faster than FFTW at every size on both machines.
 
 Open:
 
-* X8/X9  AVX-512 is implemented (gen/onefft_gen/avx512_kernels.py) and passes the tests under
-         Intel SDE (`sde64 -icx -- build/host/test_onefft`), but it has never run on hardware.
-         To do once a machine is there: benchmark against the AVX2 kernels (and decide per size
-         which to use), add a radix 8 middle pass, consider radix 16 in-place passes (possible
-         with embedded broadcasts), check frequency effects on older Intel processors.
-* Between 64 and 4096 points FFTW with patient planning is still up to 13% faster on some
-  machines (see docs/measurements.md); Apple's vDSP is 1.2 to 2.3 times faster on the M2.
-  Ideas that were not tried: vendor specific AVX2 kernels (the in-place kernels are limited by
-  the multiply-add units on AMD and by instruction count on Intel), and the fused form of the
-  passes on x86.
+* AVX-512 has not run on an Intel processor, only under Intel SDE
+  (`sde64 -spr -- build/host/test_onefft`). Their execution units differ from AMD's (see
+  docs/measurements.md), and whether their first pass should write in order is unknown: it reads
+  in order there. Needs a machine.
+* AVX-512, not built (docs/measurements.md, "Where the time goes", has the estimates): last
+  passes for 6 index bits, which save a pass at every third size; middle passes that keep
+  the twiddles of a region in registers when its blocks are single butterflies.
+* The first pass writing in order was measured on Zen 2, Zen 4 and Zen 5 only. Zen 3 gets it by
+  the same rule, unmeasured (the EPYC 7443P was no longer available). On AArch64 it was slower
+  on the old phones, but it was never tried on the Cortex-X4 and the M2 at medium sizes.
+* Between 64 and 4096 points FFTW with patient planning is still up to 14% faster with AVX2 and
+  NEON on some machines (see docs/measurements.md); Apple's vDSP is 1.2 to 2.3 times faster on
+  the M2. Ideas that were not tried: vendor specific AVX2 kernels (the in-place kernels are
+  limited by the multiply-add units on AMD and by instruction count on Intel), and the fused
+  form of the passes on x86.
 * No LICENSE file: the choice is the owner's.
 * Windows (MinGW/Clang) is untested. MSVC is not supported by design.
