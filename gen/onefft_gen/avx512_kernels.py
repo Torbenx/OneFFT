@@ -12,7 +12,9 @@ kernel can hold 8 complex vectors with room to spare. The kernels:
 * `lb`    last pass: index bits 1 and 0 after their exchanges; writes the interleaved result.
 * `n32`, `n64`, `n128`  complete transforms in registers.
 
-What the kernels were tuned for (docs/measurements.md has the numbers, from Zen 4 and Zen 5):
+What the kernels were tuned for (docs/measurements.md has the numbers, from Zen 4 and Zen 5;
+on Intel's Cascade Lake, which runs all 512 bit arithmetic and shuffles on two units, none of
+it makes a difference):
 
 * Loads are scarce: two per cycle on Zen 5 and one on Zen 4 at 512 bits, and a memory operand,
   also an embedded broadcast, is a load. Twiddles and constants that are used more than once

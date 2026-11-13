@@ -11286,13 +11286,16 @@ static size_t onefft_x86_middle(onefft_plan *plan, float *memory, size_t floats,
  * lines. Stores that miss the cache are handled one at a time by AMD's cores, loads in
  * parallel: writing in order is 3 to 15% faster on Zen 2 and Zen 4 and up to twice as fast on
  * Zen 5, as long as input and output fit a part of the third level cache. Beyond that reading
- * in order is faster. Processors that do not report that cache the AMD way read in order:
- * Intel's Skylake, the only one of them measured, gains nothing from writing in order.
+ * in order is faster. Intel's cores gain nothing from writing in order (Skylake with AVX2,
+ * Cascade Lake with AVX2 and AVX-512) and read in order, as does every processor that does not
+ * report that cache the AMD way.
  *
  * AVX-512 has a radix 16 first pass. It reads and writes 16 streams whose cache lines compete
  * for the same places of the first level cache when the transform is large, so that the radix 8
- * pass is faster then. When the data does not fit the third level cache either, a pass over it
- * costs more than that and radix 16 is used again, because it saves a pass. */
+ * pass is faster then on AMD's cores (Zen 4, Zen 5). When the data does not fit the third level
+ * cache either, a pass over it costs more than that and radix 16 is used again, because it
+ * saves a pass. Intel's Cascade Lake is as fast or faster with radix 16 at every size, by up to
+ * 10% from 2^14 points up: Intel processors always use it. */
 typedef struct {
     unsigned char f16_to, f16_from;         /* AVX-512: radix 16 up to and from these sizes, radix 8 between */
     unsigned char ordered_from, ordered_to; /* sizes whose first pass writes in order */
@@ -11313,6 +11316,10 @@ static onefft_x86_tuning onefft_x86_tune(unsigned lane_bits) {
 #else
     onefft_x86_tuning tuning = {12, 22, 99, 0};
     unsigned eax = 0, ebx = 0, ecx = 0, edx = 0, family = 0;
+    if (__get_cpuid(0, &eax, &ebx, &ecx, &edx) && ebx == 0x756e6547 && edx == 0x49656e69 && ecx == 0x6c65746e) {
+        tuning.f16_to = 99; /* "GenuineIntel" */
+        return tuning;
+    }
     if (__get_cpuid(1, &eax, &ebx, &ecx, &edx)) family = ((eax >> 8) & 15) + ((eax >> 20) & 255);
     /* The third level cache that a core has access to, from AMD's list of caches. */
     uint64_t bytes = 0;
