@@ -10,7 +10,7 @@
 set -euo pipefail
 device=$1; opts=$2; shift 2
 root=$(cd "$(dirname "$0")/.." && pwd)
-trap 'python3 "$root/gen/generate.py" >/dev/null' EXIT
+trap 'env -u ONEFFT_GEN -u ONEFFT_GEN_X86 python3 "$root/gen/generate.py" >/dev/null' EXIT
 ONEFFT_GEN="$opts" python3 "$root/gen/generate.py" >/dev/null
 if [ "${device#remote:}" != "$device" ]; then
     "$root/scripts/remote.sh" "${device#remote:}" bench/passes.c "$@"

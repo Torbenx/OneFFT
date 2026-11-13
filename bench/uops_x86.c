@@ -31,11 +31,13 @@ static float buffer[8192] __attribute__((aligned(64)));
              "xmm12", "xmm13", "xmm14", "xmm15", "cc", "memory"
 
 /* The body is assembled 8 times, with register r = 0..7 and offset o = 0, 64, .. 448. p is read,
- * q = p + 16 KiB is written. ymm14 and ymm15 are zero. */
+ * q is written. q is 1088 bytes further on in its page than p: a load from the same place of a
+ * page as a store that is still under way waits for that store on Intel's cores, which halves
+ * the speed of the tests with loads and stores. ymm14 and ymm15 are zero. */
 #define R8(M) M("0", "0") M("1", "64") M("2", "128") M("3", "192") M("4", "256") M("5", "320") M("6", "384") M("7", "448")
 #define TEST(name, body)                                                                                    \
     static void test_##name(size_t n, float *p) {                                                           \
-        float *q = p + 4096;                                                                                \
+        float *q = p + 4096 + 272;                                                                          \
         __asm__ volatile("vxorps " V "14, " V "14, " V "14\n vxorps " V "15, " V "15, " V "15\n 1:\n"       \
                          R8(body) "sub $1, %[n]\n jnz 1b\n vzeroupper\n"                                    \
                          : [n] "+r"(n), [p] "+r"(p), [q] "+r"(q) : : REGS);                                 \

@@ -115,6 +115,11 @@ int main(int argc, char **argv) {
         else { fprintf(stderr, "unknown option %s\n", argv[i]); return 2; }
     }
 
+    /* Half a second of work before the first measurement: a core that has just been woken up
+     * runs at a low frequency at first, on phones for many milliseconds. */
+    volatile unsigned spin = 0;
+    for (double t0 = now_ns(); now_ns() - t0 < 5e8;) spin++;
+
     for (int lg = min_log2; lg <= max_log2; lg++) {
         size_t n = (size_t)1 << lg;
         /* Both buffers start at a fixed place of their 4 KiB page. Otherwise the result depends
