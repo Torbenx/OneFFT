@@ -52,7 +52,7 @@ typedef void step_fn(const onefft_plan *plan, const float *in, float *out, int i
 
 static void step_first(const onefft_plan *p, const float *in, float *out, int index) {
     (void)index;
-    p->first(in, out, p->first_table, p->first_count, p->first_in_stride, p->first_out_stride);
+    p->first[0](in, out, p->first_table, p->first_count, p->first_in_stride, p->first_out_stride);
 }
 static void step_middle(const onefft_plan *p, const float *in, float *out, int index) {
     (void)in;
@@ -62,11 +62,11 @@ static void step_middle(const onefft_plan *p, const float *in, float *out, int i
 static void step_last(const onefft_plan *p, const float *in, float *out, int index) {
     (void)in;
     const onefft_last *l = &p->last[index];
-    l->run(out, l->tw, l->stride, l->count, l->regions);
+    l->run[0](out, l->tw, l->stride, l->count, l->regions);
 }
 static void step_all(const onefft_plan *p, const float *in, float *out, int index) {
     (void)index;
-    onefft_plan_execute(p, in, out);
+    onefft_plan_forward(p, in, out);
 }
 static void step_copy(const onefft_plan *p, const float *in, float *out, int index) {
     (void)p, (void)in, (void)out, (void)index;
@@ -125,8 +125,8 @@ int main(int argc, char **argv) {
             onefft_developer_radices = radices;
         }
 #endif
-        onefft_plan *p = onefft_plan_create(n, ONEFFT_FORWARD);
-        if (!p || !p->first) {
+        onefft_plan *p = onefft_plan_create(n);
+        if (!p || !p->first[0]) {
             printf("n=%zu: no multi pass plan\n", n);
             continue;
         }

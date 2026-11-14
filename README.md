@@ -32,15 +32,17 @@ onefft_forward(in, out, 1024);   /* out[k] = sum_j in[j] exp(-2 pi i jk/n) */
 onefft_inverse(out, in, 1024);   /* in is now 1024 times the original */
 ```
 
-The first call for a size computes the tables for it and keeps them. That takes a few times as
-long as the transform itself and allocates memory. Where this must not happen at an arbitrary
-time, either prepare the size up front, or manage the tables yourself with a plan:
+The first call for a size computes the tables for it and keeps them; both directions use the
+same tables. That takes a few times as long as the transform itself and allocates memory. Where
+this must not happen at an arbitrary time, either prepare the size up front, or manage the
+tables yourself with a plan:
 
 ```c
-onefft_cache_prepare(1024, ONEFFT_FORWARD);    /* now onefft_forward(.., 1024) never allocates */
+onefft_cache_prepare(1024);    /* now onefft_forward/inverse(.., 1024) never allocate */
 
-onefft_plan *plan = onefft_plan_create(1024, ONEFFT_FORWARD);   /* computes the tables */
-onefft_plan_execute(plan, in, out);                             /* only transforms */
+onefft_plan *plan = onefft_plan_create(1024);   /* computes the tables */
+onefft_plan_forward(plan, in, out);             /* only transform, */
+onefft_plan_inverse(plan, out, in);             /* in either direction */
 onefft_plan_destroy(plan);
 ```
 
@@ -56,8 +58,9 @@ C++ gets the same through thin inline wrappers in the same header:
 std::vector<std::complex<float>> in(1024), out(1024);
 onefft::forward(in.data(), out.data(), in.size());
 
-onefft::Plan plan(1024, ONEFFT_FORWARD);   // owns the tables
-plan(in.data(), out.data());
+onefft::Plan plan(1024);   // owns the tables
+plan.forward(in.data(), out.data());
+plan.inverse(out.data(), in.data());
 ```
 
 [include/onefft.h](include/onefft.h) documents every function, including what each call costs.

@@ -139,7 +139,9 @@ call processes all of them.
 `ifft(x) = swap(fft(swap(x)))` where `swap` exchanges real and imaginary parts. The kernels that
 read the input and write the output therefore exist in a second version that reads the real
 parts into the "imaginary" registers and vice versa. This costs nothing at run time and the
-middle passes and all twiddle tables are shared between the two directions.
+middle passes and all twiddle tables are shared between the two directions. A plan therefore
+serves both: it keeps the forward and the inverse version of each kernel that reads the input
+or writes the output, and one set of tables.
 
 ### The second form of the passes (Apple)
 
@@ -380,5 +382,5 @@ instruction set is chosen when a plan is created, and so are the two choices tha
 processor's caches: the order of the first pass and the sizes with a radix 16 first pass.
 
 Plans are immutable after creation, so one plan can be used from any number of threads at the
-same time. The functions without plans keep one plan per size and direction in a table of
-atomic pointers that are written once with a compare-and-swap.
+same time, in either direction. The functions without plans keep one plan per size in a table
+of atomic pointers that are written once with a compare-and-swap.

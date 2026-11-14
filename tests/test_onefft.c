@@ -100,12 +100,19 @@ static int guarded_intact(const guarded *g) {
  * over log2n butterfly stages; measured errors are about 3e-8 * sqrt(log2n). */
 static double tolerance(unsigned log2n) { return 4e-7 + 1e-7 * (double)log2n; }
 
+static void execute(const onefft_plan *plan, int inverse, const float *in, float *out) {
+    if (inverse) {
+        onefft_plan_inverse(plan, in, out);
+    } else {
+        onefft_plan_forward(plan, in, out);
+    }
+}
+
 static void test_size(unsigned log2n) {
     size_t n = (size_t)1 << log2n;
-    onefft_plan *forward = onefft_plan_create(n, ONEFFT_FORWARD);
-    onefft_plan *inverse = onefft_plan_create(n, ONEFFT_INVERSE);
-    CHECK(forward && inverse, "n=%zu: plan creation failed", n);
-    if (!forward || !inverse) return;
+    onefft_plan *plan = onefft_plan_create(n);
+    CHECK(plan, "n=%zu: plan creation failed", n);
+    if (!plan) return;
 
     double *want = malloc(2 * n * sizeof(double));
     /* The input is misaligned by one float and the output by three, to cover unaligned use. */
@@ -117,7 +124,7 @@ static void test_size(unsigned log2n) {
         for (size_t i = 0; i < 2 * n; i++) want[i] = in.data[i];
         reference_fft(want, n, direction);
         memset(out.data, 0, 2 * n * sizeof(float));
-        onefft_plan_execute(direction ? inverse : forward, in.data, out.data);
+        execute(plan, direction, in.data, out.data);
         double error = relative_error(out.data, want, 2 * n);
         CHECK(error < tolerance(log2n), "n=%zu %s: relative error %.3g", n, direction ? "inverse" : "forward", error);
         CHECK(guarded_intact(&out), "n=%zu %s: wrote outside of the output", n, direction ? "inverse" : "forward");
@@ -125,8 +132,8 @@ static void test_size(unsigned log2n) {
     }
 
     /* round trip: inverse(forward(x)) = n x */
-    onefft_plan_execute(forward, in.data, out.data);
-    onefft_plan_execute(inverse, out.data, back.data);
+    onefft_plan_forward(plan, in.data, out.data);
+    onefft_plan_inverse(plan, out.data, back.data);
     for (size_t i = 0; i < 2 * n; i++) want[i] = (double)in.data[i] * (double)n;
     double error = relative_error(back.data, want, 2 * n);
     CHECK(error < 2 * tolerance(log2n), "n=%zu round trip: relative error %.3g", n, error);
@@ -136,7 +143,7 @@ static void test_size(unsigned log2n) {
     size_t j = n > 1 ? 1 + (n / 3) % (n - 1) : 0;
     memset(in.data, 0, 2 * n * sizeof(float));
     in.data[2 * j] = 1.0f;
-    onefft_plan_execute(forward, in.data, out.data);
+    onefft_plan_forward(plan, in.data, out.data);
     double worst = 0;
     for (size_t k = 0; k < n; k++) {
         /* reduce j*k modulo n in integers to keep the angle accurate */
@@ -148,7 +155,7 @@ static void test_size(unsigned log2n) {
 
     /* a constant transforms to an impulse at 0 */
     for (size_t i = 0; i < n; i++) in.data[2 * i] = 0.5f, in.data[2 * i + 1] = -0.25f;
-    onefft_plan_execute(forward, in.data, out.data);
+    onefft_plan_forward(plan, in.data, out.data);
     worst = hypot(out.data[0] - 0.5 * (double)n, out.data[1] + 0.25 * (double)n) / (double)n;
     for (size_t k = 1; k < n; k++) {
         double d = hypot(out.data[2 * k], out.data[2 * k + 1]) / (double)n;
@@ -157,23 +164,21 @@ static void test_size(unsigned log2n) {
     CHECK(worst < 1e-6, "n=%zu constant: error %.3g", n, worst);
 
     free(want), free(in.base), free(out.base), free(back.base);
-    onefft_plan_destroy(forward), onefft_plan_destroy(inverse);
+    onefft_plan_destroy(plan);
 }
 
 static void test_invalid_sizes(void) {
     static const size_t invalid[] = {0, 3, 5, 6, 7, 12, 1000, 1023, 1025, (size_t)-1, (size_t)1 << 31};
     for (size_t i = 0; i < sizeof(invalid) / sizeof(invalid[0]); i++) {
-        onefft_plan *plan = onefft_plan_create(invalid[i], ONEFFT_FORWARD);
+        onefft_plan *plan = onefft_plan_create(invalid[i]);
         CHECK(plan == NULL, "n=%zu: expected no plan", invalid[i]);
         onefft_plan_destroy(plan);
     }
     onefft_plan_destroy(NULL); /* must be accepted */
-    CHECK(onefft_plan_create(8, 2) == NULL, "invalid direction: expected no plan");
     float in[6] = {0}, out[6] = {7, 7, 7, 7, 7, 7};
     CHECK(onefft_forward(in, out, 3) == -1 && onefft_inverse(in, out, 0) == -1, "expected failure");
     CHECK(out[0] == 7 && out[5] == 7, "output touched for an invalid size");
-    CHECK(onefft_cache_prepare(12, ONEFFT_FORWARD) == -1, "expected failure");
-    CHECK(onefft_cache_prepare(16, 5) == -1, "expected failure");
+    CHECK(onefft_cache_prepare(12) == -1 && onefft_cache_prepare(0) == -1, "expected failure");
 }
 
 /* The functions without plans give exactly the result of a plan. */
@@ -182,28 +187,31 @@ static void test_cache(void) {
         float *in = malloc(2 * n * sizeof(float)), *want = malloc(2 * n * sizeof(float));
         float *got = malloc(2 * n * sizeof(float));
         for (size_t i = 0; i < 2 * n; i++) in[i] = random_float();
+        onefft_plan *plan = onefft_plan_create(n);
+        CHECK(onefft_plan_size(plan) == n, "n=%zu: plan size", n);
+        if (n == 64) CHECK(onefft_cache_prepare(n) == 0, "prepare failed");
         for (int direction = 0; direction < 2; direction++) {
-            onefft_plan *plan = onefft_plan_create(n, direction);
-            CHECK(onefft_plan_size(plan) == n, "n=%zu: plan size", n);
-            onefft_plan_execute(plan, in, want);
-            if (n == 64) CHECK(onefft_cache_prepare(n, direction) == 0, "prepare failed");
+            execute(plan, direction, in, want);
             int status = direction ? onefft_inverse(in, got, n) : onefft_forward(in, got, n);
             CHECK(status == 0, "n=%zu: transform failed", n);
-            CHECK(!memcmp(got, want, 2 * n * sizeof(float)), "n=%zu: cached plan differs", n);
-            onefft_plan_destroy(plan);
+            CHECK(!memcmp(got, want, 2 * n * sizeof(float)), "n=%zu %s: cached plan differs", n,
+                  direction ? "inverse" : "forward");
         }
+        onefft_plan_destroy(plan);
         free(in), free(want), free(got);
     }
     onefft_cache_clear();
     onefft_cache_clear(); /* clearing an empty cache is fine */
 }
 
-/* One plan used from several threads at once must give every thread the same result. */
+/* One plan used from several threads at once, in both directions, must give every thread the
+ * same result. */
 typedef struct {
     const onefft_plan *plan;
     const float *in;
-    const float *expected;
+    const float *expected[2]; /* forward, inverse */
     size_t n;
+    int first_direction;
     int mismatches;
 } thread_job;
 
@@ -211,13 +219,16 @@ static void *thread_main(void *arg) {
     thread_job *job = arg;
     float *out = malloc(2 * job->n * sizeof(float));
     for (int round = 0; round < 200; round++) {
-        /* Odd rounds go through the cache, whose first use races between the threads. */
-        if (round & 1) {
-            if (onefft_forward(job->in, out, job->n)) job->mismatches++;
+        /* Threads alternate the direction, starting with different ones. Rounds 2 and 3 of 4 go
+         * through the cache, whose first use races between the threads. */
+        int inverse = (round + job->first_direction) & 1;
+        if (round & 2) {
+            int status = inverse ? onefft_inverse(job->in, out, job->n) : onefft_forward(job->in, out, job->n);
+            if (status) job->mismatches++;
         } else {
-            onefft_plan_execute(job->plan, job->in, out);
+            execute(job->plan, inverse, job->in, out);
         }
-        if (memcmp(out, job->expected, 2 * job->n * sizeof(float))) job->mismatches++;
+        if (memcmp(out, job->expected[inverse], 2 * job->n * sizeof(float))) job->mismatches++;
     }
     free(out);
     return NULL;
@@ -226,21 +237,23 @@ static void *thread_main(void *arg) {
 static void test_threads(void) {
     enum { THREADS = 4 };
     size_t n = 4096;
-    onefft_plan *plan = onefft_plan_create(n, ONEFFT_FORWARD);
-    float *in = malloc(2 * n * sizeof(float)), *expected = malloc(2 * n * sizeof(float));
+    onefft_plan *plan = onefft_plan_create(n);
+    float *in = malloc(2 * n * sizeof(float)), *forward = malloc(2 * n * sizeof(float));
+    float *inverse = malloc(2 * n * sizeof(float));
     for (size_t i = 0; i < 2 * n; i++) in[i] = random_float();
-    onefft_plan_execute(plan, in, expected);
+    onefft_plan_forward(plan, in, forward);
+    onefft_plan_inverse(plan, in, inverse);
     pthread_t threads[THREADS];
     thread_job jobs[THREADS];
     for (int t = 0; t < THREADS; t++) {
-        jobs[t] = (thread_job){plan, in, expected, n, 0};
+        jobs[t] = (thread_job){plan, in, {forward, inverse}, n, t & 1, 0};
         pthread_create(&threads[t], NULL, thread_main, &jobs[t]);
     }
     for (int t = 0; t < THREADS; t++) {
         pthread_join(threads[t], NULL);
         CHECK(jobs[t].mismatches == 0, "thread %d: %d results differ", t, jobs[t].mismatches);
     }
-    free(in), free(expected);
+    free(in), free(forward), free(inverse);
     onefft_plan_destroy(plan);
     onefft_cache_clear();
 }

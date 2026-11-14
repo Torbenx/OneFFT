@@ -10736,7 +10736,7 @@ typedef struct {
 } onefft_middle;
 
 typedef struct {
-    onefft_last_fn *run;
+    onefft_last_fn *run[2]; /* forward, inverse: the same kernel for passes that do not read or write the data */
     const float *tw;
     size_t regions;
     size_t stride, count;
@@ -10744,18 +10744,20 @@ typedef struct {
 
 enum { ONEFFT_MAX_MIDDLE = 32, ONEFFT_MAX_LOG2 = 30 };
 
+/* A plan serves both directions. The inverse transform is the forward one with real and
+ * imaginary parts exchanged on the way in and out, so only the kernels that read the input or
+ * write the output differ: they come in pairs indexed by `inverse`, and all tables are shared. */
 struct onefft_plan {
     size_t n;
     unsigned log2n;
-    int inverse;
-    void (*execute)(const onefft_plan *plan, const float *in, float *out);
+    void (*execute)(const onefft_plan *plan, const float *in, float *out, int inverse);
     void *memory; /* the one allocation holding all tables */
 
     /* transforms that fit the registers */
-    onefft_small_fn *small;
+    onefft_small_fn *small[2];
 
     /* transforms in passes */
-    onefft_first_fn *first;
+    onefft_first_fn *first[2];
     const uint32_t *first_table;
     size_t first_count, first_in_stride, first_out_stride;
     int middle_count;
@@ -10814,34 +10816,35 @@ static size_t onefft_bit_reverse(size_t value, unsigned bits) {
  * radix 2 transform.
  */
 
-static void onefft_execute_1(const onefft_plan *plan, const float *in, float *out) {
-    (void)plan;
+static void onefft_execute_1(const onefft_plan *plan, const float *in, float *out, int inverse) {
+    (void)plan, (void)inverse;
     out[0] = in[0], out[1] = in[1];
 }
 
-static void onefft_execute_2(const onefft_plan *plan, const float *in, float *out) {
-    (void)plan;
+static void onefft_execute_2(const onefft_plan *plan, const float *in, float *out, int inverse) {
+    (void)plan, (void)inverse;
     float ar = in[0], ai = in[1], br = in[2], bi = in[3];
     out[0] = ar + br, out[1] = ai + bi;
     out[2] = ar - br, out[3] = ai - bi;
 }
 
-static void onefft_execute_4(const onefft_plan *plan, const float *in, float *out) {
+static void onefft_execute_4(const onefft_plan *plan, const float *in, float *out, int inverse) {
+    (void)plan;
     float ar = in[0] + in[4], ai = in[1] + in[5]; /* x0 + x2 */
     float br = in[0] - in[4], bi = in[1] - in[5]; /* x0 - x2 */
     float cr = in[2] + in[6], ci = in[3] + in[7]; /* x1 + x3 */
     float dr = in[2] - in[6], di = in[3] - in[7]; /* x1 - x3 */
-    if (plan->inverse) dr = -dr, di = -di;
+    if (inverse) dr = -dr, di = -di;
     out[0] = ar + cr, out[1] = ai + ci;
     out[2] = br + di, out[3] = bi - dr; /* b - i d */
     out[4] = ar - cr, out[5] = ai - ci;
     out[6] = br - di, out[7] = bi + dr; /* b + i d */
 }
 
-static void onefft_scalar_execute(const onefft_plan *plan, const float *in, float *out) {
+static void onefft_scalar_execute(const onefft_plan *plan, const float *in, float *out, int inv) {
     size_t n = plan->n;
     unsigned log2n = plan->log2n;
-    int inv = plan->inverse; /* the inverse exchanges real and imaginary parts on the way in and out */
+    /* the inverse exchanges real and imaginary parts on the way in and out */
     for (size_t i = 0; i < n; i++) {
         size_t j = onefft_bit_reverse(i, log2n);
         out[2 * j + inv] = in[2 * i];
@@ -10929,8 +10932,8 @@ static void onefft_nested(const onefft_plan *plan, int level, size_t region, flo
     }
 }
 
-static void onefft_execute_passes(const onefft_plan *plan, const float *in, float *out) {
-    plan->first(in, out, plan->first_table, plan->first_count, plan->first_in_stride, plan->first_out_stride);
+static void onefft_execute_passes(const onefft_plan *plan, const float *in, float *out, int inverse) {
+    plan->first[inverse](in, out, plan->first_table, plan->first_count, plan->first_in_stride, plan->first_out_stride);
     /* A pass over the whole output is one kernel call. Only when the output does not fit the
      * cache are the nested passes applied piece by piece instead. */
     int whole = plan->n * 8 <= (size_t)1 << onefft_tune_cache_log2 ? plan->middle_count : plan->nested_from;
@@ -10946,11 +10949,13 @@ static void onefft_execute_passes(const onefft_plan *plan, const float *in, floa
     }
     for (int i = 0; i < plan->last_count; i++) {
         const onefft_last *l = &plan->last[i];
-        l->run(out, l->tw, l->stride, l->count, l->regions);
+        l->run[inverse](out, l->tw, l->stride, l->count, l->regions);
     }
 }
 
-static void onefft_execute_small(const onefft_plan *plan, const float *in, float *out) { plan->small(in, out); }
+static void onefft_execute_small(const onefft_plan *plan, const float *in, float *out, int inverse) {
+    plan->small[inverse](in, out);
+}
 
 /* Table entry of a middle pass: the real parts of the powers 1..radix-1 of
  * exp(-2 pi i k / 2^log2size), padded to a multiple of 4 floats, then the imaginary parts.
@@ -11045,13 +11050,12 @@ static int onefft_neon_ordered(unsigned log2n) {
 
 static size_t onefft_neon_plan(onefft_plan *plan, float *memory) {
     unsigned log2n = plan->log2n;
-    int inverse = plan->inverse;
     if (log2n < 3) return onefft_scalar_plan(plan, memory);
     if (log2n <= 5) {
         static onefft_small_fn *const small[3][2] = {
             {onefft_neon_n8, onefft_neon_n8i}, {onefft_neon_n16, onefft_neon_n16i}, {onefft_neon_n32, onefft_neon_n32i}};
         if (memory) {
-            plan->small = small[log2n - 3][inverse];
+            plan->small[0] = small[log2n - 3][0], plan->small[1] = small[log2n - 3][1];
             plan->execute = onefft_execute_small;
         }
         return 0;
@@ -11091,7 +11095,7 @@ static size_t onefft_neon_plan(onefft_plan *plan, float *memory) {
             table[2 * a] = (uint32_t)(4 * (ordered ? b : a));
             table[2 * a + 1] = (uint32_t)(8 * (ordered ? a : b));
         }
-        plan->first = inverse ? onefft_neon_f8i : onefft_neon_f8;
+        plan->first[0] = onefft_neon_f8, plan->first[1] = onefft_neon_f8i;
         plan->first_table = table;
         plan->first_count = first_count;
         plan->first_in_stride = n;      /* an eighth of the input, in bytes */
@@ -11195,7 +11199,7 @@ static size_t onefft_neon_plan(onefft_plan *plan, float *memory) {
         static onefft_last_fn *const kernels[2][2][2] = { /* by fused form, radix 8, inverse */
             {{onefft_neon_l4, onefft_neon_l4i}, {onefft_neon_l8, onefft_neon_l8i}},
             {{onefft_neon_l4_fma, onefft_neon_l4_fmai}, {onefft_neon_l8_fma, onefft_neon_l8_fmai}}};
-        l->run = kernels[fma][last == 3][inverse];
+        l->run[0] = kernels[fma][last == 3][0], l->run[1] = kernels[fma][last == 3][1];
         l->tw = memory + start;
         l->regions = 1;
         l->stride = (8 * n) >> last;
@@ -11355,11 +11359,11 @@ static onefft_x86_tuning onefft_x86_tune(unsigned lane_bits) {
 
 static size_t onefft_x86_plan(onefft_plan *plan, float *memory, const onefft_x86_kernels *kernels) {
     unsigned log2n = plan->log2n, lane_bits = kernels->lane_bits;
-    int inverse = plan->inverse, avx2 = lane_bits == 3;
+    int avx2 = lane_bits == 3;
     if (log2n < 3) return onefft_scalar_plan(plan, memory);
     if (log2n < 6 && kernels->small[log2n][0]) {
         if (memory) {
-            plan->small = kernels->small[log2n][inverse];
+            plan->small[0] = kernels->small[log2n][0], plan->small[1] = kernels->small[log2n][1];
             plan->execute = onefft_execute_small;
         }
         return 0;
@@ -11399,7 +11403,8 @@ static size_t onefft_x86_plan(onefft_plan *plan, float *memory, const onefft_x86
             table[2 * a] = (uint32_t)((ordered ? b : a) << lane_bits);
             table[2 * a + 1] = (uint32_t)((ordered ? a : b) << lane_bits);
         }
-        plan->first = first_bits == 2 ? kernels->f4[inverse] : kernels->f_odd[inverse];
+        onefft_first_fn *const *first = first_bits == 2 ? kernels->f4 : kernels->f_odd;
+        plan->first[0] = first[0], plan->first[1] = first[1];
         plan->first_table = table;
         plan->first_count = first_count;
         plan->first_in_stride = plan->first_out_stride = (8 * n) >> first_bits;
@@ -11454,7 +11459,7 @@ static size_t onefft_x86_plan(onefft_plan *plan, float *memory, const onefft_x86
         }
         if (memory) {
             onefft_last *l = &plan->last[0];
-            l->run = count > 1 ? kernels->la8 : kernels->la8x;
+            l->run[0] = l->run[1] = count > 1 ? kernels->la8 : kernels->la8x;
             l->tw = memory + start;
             l->regions = 4;
             l->stride = n / 4;
@@ -11481,7 +11486,7 @@ static size_t onefft_x86_plan(onefft_plan *plan, float *memory, const onefft_x86
         }
         if (memory) {
             onefft_last *l = &plan->last[0];
-            l->run = log2n > 6 ? kernels->la : kernels->la2;
+            l->run[0] = l->run[1] = log2n > 6 ? kernels->la : kernels->la2;
             l->tw = memory + start;
             l->regions = 4;
             l->stride = log2n > 6 ? n / 2 : vector;
@@ -11504,7 +11509,8 @@ static size_t onefft_x86_plan(onefft_plan *plan, float *memory, const onefft_x86
     }
     if (memory) {
         onefft_last *l = &plan->last[avx2 ? 1 : 0];
-        l->run = avx2 ? kernels->lb[inverse] : kernels->l4[inverse];
+        onefft_last_fn *const *run = avx2 ? kernels->lb : kernels->l4;
+        l->run[0] = run[0], l->run[1] = run[1];
         l->tw = memory + start;
         l->regions = 1;
         l->stride = 2 * n;
@@ -11553,14 +11559,13 @@ static const unsigned char onefft_avx512_element[16] = {0, 1, 8, 9, 2, 3, 10, 11
 static size_t onefft_avx512_plan(onefft_plan *plan, float *memory) {
     const onefft_x86_kernels *kernels = &onefft_avx512_kernels;
     unsigned log2n = plan->log2n;
-    int inverse = plan->inverse;
     if (log2n < 5) return onefft_x86_plan(plan, memory, &onefft_avx2_kernels);
     if (log2n < 8) { /* 32 to 128 points fit the registers */
         static onefft_small_fn *const small[3][2] = {{onefft_avx512_n32, onefft_avx512_n32i},
                                                      {onefft_avx512_n64, onefft_avx512_n64i},
                                                      {onefft_avx512_n128, onefft_avx512_n128i}};
         if (memory) {
-            plan->small = small[log2n - 5][inverse];
+            plan->small[0] = small[log2n - 5][0], plan->small[1] = small[log2n - 5][1];
             plan->execute = onefft_execute_small;
         }
         return 0;
@@ -11594,8 +11599,8 @@ static size_t onefft_avx512_plan(onefft_plan *plan, float *memory) {
             table[2 * a] = (uint32_t)((ordered ? b : a) << 4);
             table[2 * a + 1] = (uint32_t)((ordered ? a : b) << 4);
         }
-        plan->first = first_bits == 4 ? (inverse ? onefft_avx512_f16i : onefft_avx512_f16)
-                                      : (inverse ? onefft_avx512_f8i : onefft_avx512_f8);
+        plan->first[0] = first_bits == 4 ? onefft_avx512_f16 : onefft_avx512_f8;
+        plan->first[1] = first_bits == 4 ? onefft_avx512_f16i : onefft_avx512_f8i;
         plan->first_table = table;
         plan->first_count = first_count;
         plan->first_in_stride = plan->first_out_stride = (8 * n) >> first_bits;
@@ -11658,7 +11663,7 @@ static size_t onefft_avx512_plan(onefft_plan *plan, float *memory) {
     }
     if (memory) {
         onefft_last *l = &plan->last[0];
-        l->run = three ? kernels->la : kernels->la2;
+        l->run[0] = l->run[1] = three ? kernels->la : kernels->la2;
         l->tw = memory + start;
         l->regions = 4;
         l->stride = three ? n / 4 : n / 2;
@@ -11679,7 +11684,7 @@ static size_t onefft_avx512_plan(onefft_plan *plan, float *memory) {
     }
     if (memory) {
         onefft_last *l = &plan->last[1];
-        l->run = kernels->lb[inverse];
+        l->run[0] = kernels->lb[0], l->run[1] = kernels->lb[1];
         l->tw = memory + start;
         l->regions = 1;
         l->stride = 2 * n;
@@ -11764,14 +11769,12 @@ static void onefft_aligned_free(void *memory) {
 #endif
 }
 
-onefft_plan *onefft_plan_create(size_t n, int direction) {
+onefft_plan *onefft_plan_create(size_t n) {
     if (n == 0 || (n & (n - 1)) != 0) return NULL;
-    if (direction != ONEFFT_FORWARD && direction != ONEFFT_INVERSE) return NULL;
     onefft_plan *plan = (onefft_plan *)calloc(1, sizeof(onefft_plan));
     if (!plan) return NULL;
     plan->n = n;
     while (((size_t)1 << plan->log2n) < n) plan->log2n++;
-    plan->inverse = direction == ONEFFT_INVERSE;
     /* Tables address the data with 32 bit offsets, in units of complex values. */
     if (plan->log2n > ONEFFT_MAX_LOG2) {
         free(plan);
@@ -11793,26 +11796,28 @@ void onefft_plan_destroy(onefft_plan *plan) {
     free(plan);
 }
 
-void onefft_plan_execute(const onefft_plan *plan, const float *in, float *out) { plan->execute(plan, in, out); }
+void onefft_plan_forward(const onefft_plan *plan, const float *in, float *out) { plan->execute(plan, in, out, 0); }
+
+void onefft_plan_inverse(const onefft_plan *plan, const float *in, float *out) { plan->execute(plan, in, out, 1); }
 
 size_t onefft_plan_size(const onefft_plan *plan) { return plan->n; }
 
 /* ---- the plan cache behind onefft_forward() and onefft_inverse() ----------------------------
  *
- * One slot per direction and size. A slot is written once, with a compare-and-swap, and only
- * read afterwards, so transforms need no lock. If two threads create the plan for a slot at the
- * same time, one of them wins and the other frees its copy.
+ * One slot per size, for both directions. A slot is written once, with a compare-and-swap, and
+ * only read afterwards, so transforms need no lock. If two threads create the plan for a slot
+ * at the same time, one of them wins and the other frees its copy.
  */
 
-static onefft_plan *onefft_cache[2][8 * sizeof(size_t)];
+static onefft_plan *onefft_cache[8 * sizeof(size_t)];
 
-static const onefft_plan *onefft_cache_get(size_t n, int direction) {
+static const onefft_plan *onefft_cache_get(size_t n) {
     if (n == 0 || (n & (n - 1)) != 0) return NULL;
     unsigned log2n = (unsigned)__builtin_ctzll((unsigned long long)n);
-    onefft_plan **slot = &onefft_cache[direction][log2n];
+    onefft_plan **slot = &onefft_cache[log2n];
     onefft_plan *plan = __atomic_load_n(slot, __ATOMIC_ACQUIRE);
     if (plan) return plan;
-    plan = onefft_plan_create(n, direction);
+    plan = onefft_plan_create(n);
     if (!plan) return NULL;
     onefft_plan *expected = NULL;
     if (!__atomic_compare_exchange_n(slot, &expected, plan, 0, __ATOMIC_ACQ_REL, __ATOMIC_ACQUIRE)) {
@@ -11823,28 +11828,23 @@ static const onefft_plan *onefft_cache_get(size_t n, int direction) {
 }
 
 int onefft_forward(const float *in, float *out, size_t n) {
-    const onefft_plan *plan = onefft_cache_get(n, ONEFFT_FORWARD);
+    const onefft_plan *plan = onefft_cache_get(n);
     if (!plan) return -1;
-    plan->execute(plan, in, out);
+    plan->execute(plan, in, out, 0);
     return 0;
 }
 
 int onefft_inverse(const float *in, float *out, size_t n) {
-    const onefft_plan *plan = onefft_cache_get(n, ONEFFT_INVERSE);
+    const onefft_plan *plan = onefft_cache_get(n);
     if (!plan) return -1;
-    plan->execute(plan, in, out);
+    plan->execute(plan, in, out, 1);
     return 0;
 }
 
-int onefft_cache_prepare(size_t n, int direction) {
-    if (direction != ONEFFT_FORWARD && direction != ONEFFT_INVERSE) return -1;
-    return onefft_cache_get(n, direction) ? 0 : -1;
-}
+int onefft_cache_prepare(size_t n) { return onefft_cache_get(n) ? 0 : -1; }
 
 void onefft_cache_clear(void) {
-    for (int direction = 0; direction < 2; direction++) {
-        for (size_t i = 0; i < 8 * sizeof(size_t); i++) {
-            onefft_plan_destroy(__atomic_exchange_n(&onefft_cache[direction][i], NULL, __ATOMIC_ACQ_REL));
-        }
+    for (size_t i = 0; i < 8 * sizeof(size_t); i++) {
+        onefft_plan_destroy(__atomic_exchange_n(&onefft_cache[i], NULL, __ATOMIC_ACQ_REL));
     }
 }
