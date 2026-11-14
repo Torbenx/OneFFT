@@ -2,7 +2,8 @@
 
 What was measured while building OneFFT, and what followed from it. [design.md](design.md)
 describes the result; this document is the evidence behind its decisions, and the place to look
-before trying to make something faster.
+before trying to make something faster: "Open questions" at the end lists what is known to be
+unmeasured or unbuilt, "Decisions and their effect" what was tried and what it gave.
 
 ## Setup
 
@@ -542,8 +543,9 @@ SSE. They were not tuned.
   to 524288 points, and faster than FFTW (at 2^20 points OneFFT is ahead). It is the only other
   library here that is written for one specific family of cores, and the only one that does
   not have to split and interleave.
-* The 2021 proof of concept (commit `4587999`, since removed) takes 6.9 us for 1024 points on the Pixel 3a, 6.6 us
-  on the A50, 2.1 us on the S24 and 1.5 us on the M2: 1.04 to 1.9 times the time of OneFFT.
+* The 2021 proof of concept (commit `4587999`, since removed) takes 6.9 us for 1024 points on
+  the Pixel 3a, 6.6 us on the A50, 2.1 us on the S24 and 1.5 us on the M2: 1.04 to 1.9 times the
+  time of OneFFT.
 
 ### The dip at 64 points
 
@@ -849,3 +851,42 @@ What would be needed to be substantially faster:
   there only fewer operations help, and a transform already needs few more than the
   butterflies themselves (two shuffles per vector to split, two to interleave, eight for the
   four exchanges).
+
+## Open questions
+
+What was not measured or not built. Each item points to the section with the evidence. When an
+item is measured or tried, its result goes to that section (or to "Decisions and their effect",
+under "Tried and dropped" if it did not pay off) and the item is removed here.
+
+Not measured:
+
+* **AVX-512 on Intel with turbo, and on Intel cores after Cascade Lake.** The one Intel
+  processor with AVX-512 ran with turbo switched off (see "Setup"). With turbo, processors of
+  that generation clock 512 bit code lower than 256 bit code; whether the AVX-512 kernels still
+  beat the AVX2 kernels by the 1.3 to 2.0 times measured is unknown. Ice Lake and later were not
+  measured at all.
+* **The order of the first pass on Intel cores after Cascade Lake.** Skylake and Cascade Lake
+  gain nothing from writing in order, so every x86 processor that is not AMD's reads in order
+  (see "Decisions and their effect"). Newer Intel cores may behave like AMD's.
+* **The SSE2 kernels were not tuned** (see "SSE2"): every x86-64 machine measured has AVX2.
+
+Not built or not tried:
+
+* **AVX-512: last passes for 6 index bits** (one pass less at every third size, estimated 15%
+  on Zen 4 and 5% on Zen 5 at 1024 points) and **middle passes that keep the twiddles of a
+  region in registers** when its blocks are single butterflies (about 5% on Zen 4). See "Where
+  the time goes"; neither is likely to help Cascade Lake.
+* **A 64 point kernel for AVX2.** 64 points are 20 to 25% below the level of 128 points with
+  AVX2; 8 complex vectors leave no register free for the lane exchanges (see "The dip at 64
+  points").
+* **AVX2 kernels per vendor.** Between 64 and 4096 points patient FFTW is up to 16% faster than
+  OneFFT on some machines with AVX2 and NEON (see "Summary"). The AVX2 kernels are limited by
+  the multiply-add units on AMD's cores and by the instruction count on Intel's (see "What the
+  cores can do" and "Where the time goes").
+* **The fused multiply-add form of the middle and last passes on x86** ("The second form of the
+  passes" in design.md; about 8% faster on the M2). It was not tried with AVX2 or AVX-512, whose
+  multiply-adds are not destructive, so the register copies it costs on AArch64 would not be
+  needed.
+* **Closing the gap to vDSP on Apple platforms**, 1.1 to 1.7 times from 128 points up (see
+  "Summary"). vDSP works on split real and imaginary arrays; how much of the gap is the split
+  and interleave that OneFFT has to do was not measured.

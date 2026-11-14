@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Syncs the sources to a remote test machine (see TestHardware.md), builds there natively and runs.
+# Syncs the sources to a remote test machine (scripts/machines.local), builds there natively and runs.
 #
 #   scripts/remote.sh <machine> test [args]            the tests, every code path of the machine
 #   scripts/remote.sh <machine> bench [args]           the benchmark with all comparison libraries
