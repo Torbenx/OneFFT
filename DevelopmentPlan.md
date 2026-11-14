@@ -47,8 +47,8 @@ R6. Final review and polish
 ## Status (written by the implementation sessions)
 
 Done and verified. Tests pass on Pixel 3a, Galaxy A50, Galaxy S24, Apple M2, the Zen 2 laptop,
-the Intel i5-9600K, the EPYC 7443P (Zen 3), the EPYC 9254 (Zen 4), the EPYC 9255 (Zen 5) and
-the Xeon Gold 6230R (Cascade Lake).
+the Intel i5-9600K, the EPYC 7443P (Zen 3), the EPYC 9254 (Zen 4), the EPYC 9255 and the Ryzen 9
+9950X (Zen 5) and the Xeon Gold 6230R (Cascade Lake).
 
 * A1/A2  Reference built, validated and benchmarked against FFTW, FFmpeg, PFFFT, KissFFT, vDSP.
 * A3-A7  AArch64 for all power-of-two sizes, forward and inverse: kernel generator with
@@ -63,7 +63,8 @@ the Xeon Gold 6230R (Cascade Lake).
 * X8/X9  AVX-512, measured and tuned on Zen 4, Zen 5 and Cascade Lake: radix 16 first pass in
          32 registers, radix 8 middle pass, single kernels for 32 to 128 points, twiddles in
          registers, a software pipelined last pass. Faster than FFTW at every size on all
-         three. The kernels are the same for AMD and Intel (Intel specific variants gained
+         four machines (Zen 5 twice: EPYC 9255 and Ryzen 9 9950X), level only at 512 points
+         on Zen 4. The kernels are the same for AMD and Intel (Intel specific variants gained
          nothing); the plan differs: Intel always uses the radix 16 first pass and reads in
          order.
 * All    The first pass writes in order instead of reading in order where that is faster: on
@@ -80,15 +81,14 @@ Open:
   passes for 6 index bits, which save a pass at every third size; middle passes that keep
   the twiddles of a region in registers when its blocks are single butterflies. Both are for
   the Zen cores; Cascade Lake is limited by its arithmetic units and would gain little.
-* 64 points is the weakest size with AVX2 (three passes for 6 index bits, 18 to 25% below the
+* 64 points is the weakest size with AVX2 (three passes for 6 index bits, 20 to 25% below the
   level of 128 points, see "The dip at 64 points" in docs/measurements.md). A kernel for it was
   not built: 8 complex vectors leave no register free.
-* The first pass writing in order was measured on Zen 2, Zen 4, Zen 5 and the M2 (faster, in
-  use) and on the three phones (slower, not used). Zen 3 gets it by the same rule as the other
-  AMD cores, unmeasured: the EPYC 7443P was no longer available. Intel processors read in
-  order: Skylake (i5-9600K) and Cascade Lake gain nothing from writing in order; newer Intel
-  cores were not measured.
-* Between 64 and 4096 points FFTW with patient planning is still up to 14% faster with AVX2 and
+* The first pass writing in order was measured on Zen 2, Zen 3, Zen 4, Zen 5 and the M2
+  (faster, in use) and on the three phones (slower, not used). Intel processors read in order:
+  Skylake (i5-9600K) and Cascade Lake gain nothing from writing in order; newer Intel cores were
+  not measured.
+* Between 64 and 4096 points FFTW with patient planning is still up to 16% faster with AVX2 and
   NEON on some machines (see docs/measurements.md); Apple's vDSP is 1.1 to 1.7 times faster on
   the M2. Ideas that were not tried: vendor specific AVX2 kernels (the in-place kernels are
   limited by the multiply-add units on AMD and by instruction count on Intel), and the fused

@@ -29,6 +29,7 @@ MACHINES = {  # file name: chart title
     "pixel3a": "Kryo 360 Gold (Google Pixel 3a), AArch64",
     "a50": "Cortex-A73 (Samsung Galaxy A50), AArch64",
     "zen5": "AMD EPYC 9255 (Zen 5), AVX-512",
+    "9950x": "AMD Ryzen 9 9950X (Zen 5), AVX-512",
     "zen4": "AMD EPYC 9254 (Zen 4), AVX-512",
     "clx": "Intel Xeon Gold 6230R (Cascade Lake), AVX-512",
     "intel": "Intel Core i5-9600K (Skylake), AVX2",

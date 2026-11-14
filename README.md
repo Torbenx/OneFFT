@@ -110,19 +110,19 @@ microseconds. It makes sizes comparable; higher is better. FFTW 3.3.10 was plann
 </picture>
 
 [docs/measurements.md](docs/measurements.md) has the charts and the numbers for these and for
-an Intel Xeon Gold 6230R (Cascade Lake, AVX-512), an AMD EPYC 9254 (Zen 4), an AMD EPYC 7443P
-(Zen 3), an AMD Ryzen 7 5700U (Zen 2), a Pixel 3a (Kryo 360) and a Galaxy A50 (Cortex-A73), and
-discusses what limits the speed on each of them. In short:
+an AMD Ryzen 9 9950X (Zen 5), an Intel Xeon Gold 6230R (Cascade Lake, AVX-512), an AMD EPYC
+9254 (Zen 4), an AMD EPYC 7443P (Zen 3), an AMD Ryzen 7 5700U (Zen 2), a Pixel 3a (Kryo 360)
+and a Galaxy A50 (Cortex-A73), and discusses what limits the speed on each of them. In short:
 
 * Against FFmpeg's `av_tx`, OneFFT is 1.25 to 5.3 times faster from 16 points up. Against
-  PFFFT it is 1.2 to 6.3 times faster.
-* Against FFTW with patient planning it is 1.3 to 3.6 times faster up to 32 points, and 1.2 to
-  5.9 times faster from 8192 points up. From 64 to 4096 points the two are close with NEON and
-  AVX2: between 14% slower and 21% faster, depending on the machine and the size.
-* With AVX-512 it is ahead of FFTW at every size on the three machines measured, Zen 4, Zen 5
-  and Cascade Lake: by 1.05 to 1.5 times from 64 to 4096 points. Its AVX-512 kernels are 1.45 to
-  2.1 times faster than its AVX2 kernels on Zen 5, 1.3 to 2.0 times on Cascade Lake and 1.1 to
-  1.27 times on Zen 4.
+  PFFFT it is 1.2 to 6.2 times faster.
+* Against FFTW with patient planning it is 1.3 to 3.7 times faster up to 32 points, and 1.2 to
+  6.4 times faster from 8192 points up. From 64 to 4096 points the two are close with NEON and
+  AVX2: between 16% slower and 21% faster, depending on the machine and the size.
+* With AVX-512 it is ahead of FFTW at every size on the four machines measured, Zen 4, two with
+  Zen 5 and Cascade Lake, except at 512 points on Zen 4, where the two are level: by up to 1.57
+  times from 64 to 4096 points. Its AVX-512 kernels are 1.44 to 2.1 times faster than its AVX2
+  kernels on Zen 5, 1.3 to 2.0 times on Cascade Lake and 1.12 to 1.25 times on Zen 4.
 * Most curves have a step at the smallest size that is done in passes instead of one kernel
   (64 points with AVX2 and NEON, 256 with AVX-512): see "The dip at 64 points" in the
   measurements.
