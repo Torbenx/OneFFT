@@ -542,7 +542,7 @@ SSE. They were not tuned.
   to 524288 points, and faster than FFTW (at 2^20 points OneFFT is ahead). It is the only other
   library here that is written for one specific family of cores, and the only one that does
   not have to split and interleave.
-* The 2021 proof of concept in `reference/` takes 6.9 us for 1024 points on the Pixel 3a, 6.6 us
+* The 2021 proof of concept (commit `4587999`, since removed) takes 6.9 us for 1024 points on the Pixel 3a, 6.6 us
   on the A50, 2.1 us on the S24 and 1.5 us on the M2: 1.04 to 1.9 times the time of OneFFT.
 
 ### The dip at 64 points

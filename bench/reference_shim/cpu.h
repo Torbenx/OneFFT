@@ -1,1 +1,0 @@
-/* Shim, see log.h. */

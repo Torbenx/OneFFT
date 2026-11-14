@@ -159,7 +159,6 @@ tests/          tests of the built library
 bench/          benchmark against other libraries, and tools used for tuning
 scripts/        build, test and benchmark helpers for the host, Android devices and a Mac
 docs/           design and measurements
-reference/      the 2021 proof of concept that OneFFT started from
 ```
 
 After changing a kernel:

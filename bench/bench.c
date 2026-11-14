@@ -25,9 +25,6 @@ static const bench_impl *const impls[] = {
 #ifdef BENCH_ONEFFT
     &impl_onefft,
 #endif
-#ifdef BENCH_REFERENCE
-    &impl_reference,
-#endif
 #ifdef BENCH_FFTW
     &impl_fftw,
 #endif

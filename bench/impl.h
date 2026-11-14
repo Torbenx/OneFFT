@@ -13,7 +13,6 @@ typedef struct {
 } bench_impl;
 
 /* Each adapter translation unit defines one of these; bench.c lists the ones compiled in. */
-extern const bench_impl impl_reference;
 extern const bench_impl impl_onefft;
 extern const bench_impl impl_fftw;
 extern const bench_impl impl_pffft;

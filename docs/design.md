@@ -315,7 +315,7 @@ call over the whole output. Beyond that:
 
 ## Why not ...
 
-**... the structure of the 2021 proof of concept (`reference/`)?** It transforms 32 values that
+**... the structure of the 2021 proof of concept (removed; see commit `4587999`)?** It transforms 32 values that
 are all in the registers in one go: 5 stages per pass instead of 3. To get 32 values of *one*
 column into the registers it has to gather and scatter them one lane at a time (`ld2`/`st2` of
 single lanes), and it needs the lane/register exchange in every pass. On every core measured,
