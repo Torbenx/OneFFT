@@ -7,6 +7,8 @@
 /*
  * OneFFT - runtime: plans, twiddle tables and the transform drivers.
  *
+ * Copyright (c) 2026 Torben Thaysen. SPDX-License-Identifier: MIT (see LICENSE).
+ *
  * The SIMD kernels are generated (onefft_*.inc, see gen/). This file decides which kernels a
  * transform size uses, builds their tables and calls them. docs/design.md explains the
  * algorithm; the comments here assume it has been read.
@@ -30,6 +32,8 @@
 #endif
 /*
  * OneFFT AArch64 Advanced SIMD kernels.
+ *
+ * Copyright (c) 2026 Torben Thaysen. SPDX-License-Identifier: MIT (see LICENSE).
  *
  * GENERATED FILE, DO NOT EDIT. Change gen/onefft_gen and run gen/generate.py instead.
  *
@@ -4365,6 +4369,8 @@ static void onefft_neon_c4_fma(float *data, const float *tw, const size_t *args,
 /*
  * OneFFT x86-64 SSE2 kernels.
  *
+ * Copyright (c) 2026 Torben Thaysen. SPDX-License-Identifier: MIT (see LICENSE).
+ *
  * GENERATED FILE, DO NOT EDIT. Change gen/onefft_gen and run gen/generate.py instead.
  *
  * Every kernel is a normal C function whose body is one inline assembly block. The SIMD registers
@@ -5668,6 +5674,8 @@ static void onefft_sse2_c4(float *data, const float *tw, const size_t *args, siz
 #define ONEFFT_AVX2 1
 /*
  * OneFFT x86-64 AVX2 and FMA kernels.
+ *
+ * Copyright (c) 2026 Torben Thaysen. SPDX-License-Identifier: MIT (see LICENSE).
  *
  * GENERATED FILE, DO NOT EDIT. Change gen/onefft_gen and run gen/generate.py instead.
  *
@@ -7446,6 +7454,8 @@ __attribute__((target("avx2,fma"))) static void onefft_avx2_la8x(float *data, co
 #define ONEFFT_AVX512 1
 /*
  * OneFFT x86-64 AVX-512 kernels.
+ *
+ * Copyright (c) 2026 Torben Thaysen. SPDX-License-Identifier: MIT (see LICENSE).
  *
  * GENERATED FILE, DO NOT EDIT. Change gen/onefft_gen and run gen/generate.py instead.
  *

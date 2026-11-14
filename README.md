@@ -174,3 +174,8 @@ x86-64 and AArch64, with GCC and Clang, on Linux and macOS.
 `bench/passes.c` times the passes of a transform separately, and `bench/uops_aarch64.c` and
 `bench/uops_x86.c` measure what a core does with the instructions the kernels are made of.
 [docs/measurements.md](docs/measurements.md) explains how they were used.
+
+## License
+
+MIT, see [LICENSE](LICENSE). The benchmark can link FFTW (GPL), FFmpeg (LGPL), PFFFT and
+KissFFT for comparison; the library itself uses none of them.

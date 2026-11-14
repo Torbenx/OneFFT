@@ -93,5 +93,4 @@ Open:
   the M2. Ideas that were not tried: vendor specific AVX2 kernels (the in-place kernels are
   limited by the multiply-add units on AMD and by instruction count on Intel), and the fused
   form of the passes on x86.
-* No LICENSE file: the choice is the owner's.
 * Windows (MinGW/Clang) is untested. MSVC is not supported by design.

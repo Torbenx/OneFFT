@@ -1,6 +1,8 @@
 /*
  * OneFFT x86-64 SSE2 kernels.
  *
+ * Copyright (c) 2026 Torben Thaysen. SPDX-License-Identifier: MIT (see LICENSE).
+ *
  * GENERATED FILE, DO NOT EDIT. Change gen/onefft_gen and run gen/generate.py instead.
  *
  * Every kernel is a normal C function whose body is one inline assembly block. The SIMD registers

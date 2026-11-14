@@ -1,6 +1,8 @@
 /*
  * OneFFT - runtime: plans, twiddle tables and the transform drivers.
  *
+ * Copyright (c) 2026 Torben Thaysen. SPDX-License-Identifier: MIT (see LICENSE).
+ *
  * The SIMD kernels are generated (onefft_*.inc, see gen/). This file decides which kernels a
  * transform size uses, builds their tables and calls them. docs/design.md explains the
  * algorithm; the comments here assume it has been read.
