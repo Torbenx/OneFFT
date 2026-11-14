@@ -166,12 +166,12 @@ After changing a kernel:
 ```
 python3 gen/test_kernels.py      # runs every kernel in simulation against a reference FFT
 python3 gen/generate.py          # rewrites src/onefft_*.inc and dist/
-scripts/test.sh host             # builds with warnings as errors, tests every code path
+cmake --workflow --preset host   # builds with warnings as errors, tests every code path
 ```
 
-`scripts/test.sh <device>` runs the tests on an Android device over adb and
-`scripts/remote.sh <machine> test` on another machine over ssh. CI runs all of the above on
-x86-64 and AArch64, with GCC and Clang, on Linux and macOS.
+`ONEFFT_DEVICE=<device> cmake --workflow --preset android` runs the same tests on an Android
+device over adb and `scripts/remote.sh <machine> test` on another machine over ssh. CI runs all
+of the above on x86-64 and AArch64, with GCC and Clang, on Linux and macOS.
 
 `bench/passes.c` times the passes of a transform separately, and `bench/uops_aarch64.c` and
 `bench/uops_x86.c` measure what a core does with the instructions the kernels are made of.

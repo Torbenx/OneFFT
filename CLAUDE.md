@@ -27,15 +27,15 @@ Users get one C file and one header with no dependencies and no compiler flags.
   ```
   python3 gen/test_kernels.py      # every kernel in simulation against a reference FFT
   python3 gen/generate.py          # rewrites src/onefft_*.inc and dist/
-  scripts/test.sh host             # warnings as errors, every code path of this machine
+  cmake --workflow --preset host   # warnings as errors, every code path of this machine
   ```
-* **The test variants exist three times and must stay in step.** One build only exercises the
+* **Every code path needs a test variant in `CMakeLists.txt`.** One build only exercises the
   instruction set and the plan choices of the machine it runs on; the others are tested by
   building again with `ONEFFT_NO_AVX512`, `ONEFFT_NO_AVX2`, `ONEFFT_NO_SIMD`,
-  `ONEFFT_X86_TUNING=...`, `ONEFFT_NEON_FMA=0/1` and `ONEFFT_NEON_ORDERED=0/1`. The lists are in
-  `CMakeLists.txt` (`onefft_add_test`, what CI runs), in the `host` case of `scripts/test.sh`
-  (one list for x86-64, one for AArch64) and in its Android case (a deliberate subset). A new
-  switch or kernel form that changes which code runs belongs in all three.
+  `ONEFFT_X86_TUNING=...`, `ONEFFT_NEON_FMA=0/1` and `ONEFFT_NEON_ORDERED=0/1`. The variants are
+  listed once, with `onefft_add_test`, and every way of testing runs that list (CI, the host,
+  Android devices, the remote machines). A new switch or kernel form that changes which code
+  runs gets a variant there.
 * **The version is in three places:** `CMakeLists.txt` (`project(... VERSION ...)`),
   `MODULE.bazel` and the `ONEFFT_VERSION_*` macros in `include/onefft.h` (then regenerate
   `dist/`).
@@ -47,14 +47,21 @@ Users get one C file and one header with no dependencies and no compiler flags.
 
 ## Testing
 
-* `scripts/test.sh host` tests what the host processor can run; the code paths it cannot run
-  are not tested by it. CMake does the same through `ctest` (it also tests `dist/` and the C++
-  interface), Bazel with `bazel test //...`.
-* AVX-512 without AVX-512 hardware: run the test binary under Intel SDE (`sde64 -spr -- ...`;
-  `.tools/` is the conventional place for it). Slow, so limit the size argument.
-* AArch64: `scripts/test.sh <device>` builds with the Android NDK (`ANDROID_NDK_HOME` or
-  `.tools/android-ndk-r27c`) and runs on a device over adb; `scripts/remote.sh <machine> test`
-  runs the tests on another machine over ssh, for example a Mac.
+* `cmake --workflow --preset host` (`CMakePresets.json`, CMake 3.25 or later) builds with
+  warnings as errors and runs `ctest`: every variant, `dist/` and the C++ interface, on what the
+  host processor can run; the code paths it cannot run are not tested by it. Bazel only builds
+  the default variant (`bazel test //...`). `-DONEFFT_TEST_SIZE=<log2>` at configure time
+  changes the largest size tested (18).
+* AVX-512 without AVX-512 hardware: run the tests under Intel SDE with
+  `cmake --preset host -B build/cmake-sde "-DCMAKE_TEST_LAUNCHER=<path>/sde64;-spr;--"
+  -DONEFFT_TEST_SIZE=12`, then build and `ctest` in that directory (CMake 3.29 or later;
+  `.tools/` is the conventional place for SDE). Slow, so keep the size small.
+* AArch64: `ONEFFT_DEVICE=<device> cmake --workflow --preset android` builds with the Android
+  NDK in `ANDROID_NDK_HOME` (for example `.tools/android-ndk-r27c`) and runs the tests on a
+  device over adb, with `scripts/android_run.sh` as the cross-compiling emulator;
+  `ONEFFT_DEVICE=<device> ctest --preset android` runs them again on another device.
+  `scripts/remote.sh <machine> test` runs the host preset on another machine over ssh, for
+  example a Mac (CMake from the PATH or `~/onefft-tools-src/bin`).
 * CI (`.github/workflows/ci.yml`) runs the kernel simulation, checks the generated files and
   runs `ctest` on Linux x86-64 and AArch64 (GCC and Clang) and macOS (Apple silicon and x86-64),
   plus Bazel. Its runners cannot be relied on to have AVX-512.

@@ -32,9 +32,12 @@ if(ONEFFT_BUILD_TESTS)
     enable_testing()
     find_package(Threads REQUIRED)
     set(ONEFFT_WARNINGS -Wall -Wextra -Wpedantic -Wshadow -Wconversion -Wno-sign-conversion)
+    set(ONEFFT_TEST_SIZE 18 CACHE STRING "Largest log2 of the transform size the tests check")
 
     # The same tests run against every code path the build machine can execute: the library as
     # built, the builds without the better instruction sets, and the single file distribution.
+    # This is the only list of test variants; the android preset (CMakePresets.json) runs the same
+    # tests on an Android device.
     function(onefft_add_test name source)
         add_executable(${name} tests/test_onefft.c ${source})
         target_include_directories(${name} PRIVATE include)
@@ -44,7 +47,7 @@ if(ONEFFT_BUILD_TESTS)
         if(ONEFFT_MATH_LIBRARY)
             target_link_libraries(${name} PRIVATE ${ONEFFT_MATH_LIBRARY})
         endif()
-        add_test(NAME ${name} COMMAND ${name} 18)
+        add_test(NAME ${name} COMMAND ${name} ${ONEFFT_TEST_SIZE})
     endfunction()
     onefft_add_test(test_onefft src/onefft.c)
     # x86-64: the tunings (onefft_x86_tuning in onefft.c) select what otherwise depends on the
@@ -71,6 +74,7 @@ if(ONEFFT_BUILD_TESTS)
         enable_language(CXX)
         add_executable(test_cpp tests/test_cpp.cpp)
         target_link_libraries(test_cpp PRIVATE onefft)
+        target_compile_options(test_cpp PRIVATE ${ONEFFT_WARNINGS})
         set_target_properties(test_cpp PROPERTIES CXX_STANDARD 11)
         add_test(NAME test_cpp COMMAND test_cpp)
     endif()
