@@ -19,6 +19,10 @@ if [ -n "$device" ]; then
     adb+=(-s "${serial:-$device}")
 fi
 "${adb[@]}" push "$binary" /data/local/tmp/ >/dev/null
+# shared libraries next to the binary (the benchmark's libkfr_capi.so) go along with it
+for lib in "$(dirname "$binary")"/*.so; do
+    [ -f "$lib" ] && "${adb[@]}" push "$lib" /data/local/tmp/ >/dev/null
+done
 name=$(basename "$binary")
 # Pin to the cores with the highest maximum frequency (the "big" or "prime" cluster).
 mask=$("${adb[@]}" shell 'best=0; mask=0; i=0
@@ -26,4 +30,4 @@ for f in /sys/devices/system/cpu/cpu[0-9]*/cpufreq/cpuinfo_max_freq; do
   c=${f#/sys/devices/system/cpu/cpu}; c=${c%%/*}; v=$(cat $f)
   if [ "$v" -gt "$best" ]; then best=$v; mask=$((1 << c)); elif [ "$v" -eq "$best" ]; then mask=$((mask | (1 << c))); fi
 done; printf "%x" $mask')
-"${adb[@]}" shell "cd /data/local/tmp && taskset $mask ./$name $*"
+"${adb[@]}" shell "cd /data/local/tmp && LD_LIBRARY_PATH=/data/local/tmp taskset $mask ./$name $*"
