@@ -25,11 +25,17 @@ static const bench_impl *const impls[] = {
 #ifdef BENCH_ONEFFT
     &impl_onefft,
 #endif
+#ifdef BENCH_TWOFFT
+    &impl_twofft,
+#endif
 #ifdef BENCH_FFTW
     &impl_fftw,
 #endif
 #ifdef BENCH_FFMPEG
     &impl_ffmpeg,
+#endif
+#ifdef BENCH_KFR
+    &impl_kfr,
 #endif
 #ifdef BENCH_PFFFT
     &impl_pffft,

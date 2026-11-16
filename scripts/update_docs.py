@@ -18,7 +18,7 @@ import sys
 
 ROOT = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 TITLES = {"onefft": "OneFFT", "onefft_avx2": "OneFFT (AVX2)", "fftw": "FFTW", "ffmpeg": "FFmpeg", "pffft": "PFFFT",
-          "vdsp": "vDSP"}
+          "vdsp": "vDSP", "twofft": "TwoFFT", "kfr": "KFR"}
 
 
 def table(path, sizes):
