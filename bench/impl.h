@@ -20,5 +20,7 @@ extern const bench_impl impl_kissfft;
 extern const bench_impl impl_ffmpeg;
 extern const bench_impl impl_vdsp;
 extern const bench_impl impl_pocketfft;
+extern const bench_impl impl_twofft;
+extern const bench_impl impl_kfr;
 
 #endif

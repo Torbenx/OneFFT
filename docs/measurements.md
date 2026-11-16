@@ -31,6 +31,10 @@ and imaginary arrays and is given those (the conversion is not timed, which favo
 * FFmpeg 7.1, `av_tx` with `AV_TX_FLOAT_FFT`, with its assembly for the target.
 * PFFFT (the marton78 fork), `pffft_transform_ordered`; SSE or NEON, it has no AVX kernels.
 * vDSP from Accelerate, `vDSP_DFT_Execute`.
+* KFR 6.3.1 through its C API, `kfr_dft_execute_f32`, built with Clang; it picks SSE2 to
+  AVX-512 at run time.
+* TwoFFT, a sibling library, compiled from its source tree next to this one (`../TwoFFT`, or
+  `TWOFFT_DIR`) with the benchmark's flags.
 
 `scripts/third_party.sh` builds the libraries and `scripts/build_bench.sh` the benchmark.
 Compilers: Clang 18 (Android NDK r27c), Apple Clang 21, GCC 15.

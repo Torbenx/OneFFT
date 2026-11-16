@@ -77,4 +77,22 @@ if [ ! -f "$prefix/lib/libavutil.a" ]; then
         --disable-autodetect --disable-shared --enable-static --enable-pic >/dev/null &&
         make -s -j"$jobs" >/dev/null && make -s install >/dev/null)
 fi
+# --- KFR (C API) ---------------------------------------------------------------------------------
+# C++17 with CMake and Ninja; its C API is built as a shared library whatever BUILD_SHARED_LIBS
+# says. KFR wants Clang. Set SKIP_KFR=1 to leave it out.
+if [ -z "${SKIP_KFR:-}" ] && [ ! -f "$prefix/lib/libkfr_capi.so" ] && [ ! -f "$prefix/lib/libkfr_capi.dylib" ]; then
+    fetch_git kfr https://github.com/kfrlib/kfr.git 6.3.1
+    build=$prefix/build-kfr; rm -rf "$build"; mkdir -p "$build"
+    kfr_cmake=(-G Ninja -DCMAKE_BUILD_TYPE=Release -DKFR_ENABLE_CAPI_BUILD=ON -DBUILD_SHARED_LIBS=OFF
+               -DENABLE_TESTS=OFF -DCMAKE_INSTALL_PREFIX="$prefix" -DCMAKE_POSITION_INDEPENDENT_CODE=ON)
+    case $target in
+    android-arm64)
+        kfr_cmake+=(-DCMAKE_TOOLCHAIN_FILE="${ANDROID_NDK_HOME:-$tools/android-ndk-r27c}/build/cmake/android.toolchain.cmake"
+                    -DANDROID_ABI=arm64-v8a -DANDROID_PLATFORM=android-24) ;;
+    host) kfr_cmake+=(-DCMAKE_CXX_COMPILER="${KFR_CXX:-clang++}") ;;
+    esac
+    cmake -S "$src/kfr" -B "$build" "${kfr_cmake[@]}" >/dev/null
+    cmake --build "$build" >/dev/null && cmake --install "$build" >/dev/null
+fi
+
 echo "third-party libraries for $target are in $prefix"
