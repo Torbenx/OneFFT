@@ -46,6 +46,8 @@ SERIES = [  # result name, label, light colour, dark colour
     ("ffmpeg", "FFmpeg", "#1baf7a", "#199e70"),
     ("pffft", "PFFFT", "#eda100", "#c98500"),
     ("vdsp", "vDSP", "#e87ba4", "#d55181"),
+    ("twofft", "TwoFFT", "#008300", "#0ca30c"),
+    ("kfr", "KFR", "#6250d6", "#9085e9"),
 ]
 
 THEMES = {

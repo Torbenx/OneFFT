@@ -91,10 +91,11 @@ out-of-place interface on interleaved data. The unit is the one FFT benchmarks c
 "mflops": 5 n log2(n), the operation count of a textbook transform, divided by the time in
 microseconds. It makes sizes comparable; higher is better. FFTW 3.3.10 was planned with
 `FFTW_PATIENT` up to 4096 points and `FFTW_MEASURE` above; FFmpeg is `av_tx` of version 7.1.
+KFR 6.3.1 and TwoFFT are in the S24 and M2 charts only.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/plots/s24-dark.svg">
-  <img src="docs/plots/s24.svg" alt="Line chart of the speed of OneFFT, FFTW, FFmpeg and PFFFT over the transform size on a Cortex-X4; the numbers are in the tables of docs/measurements.md." width="760">
+  <img src="docs/plots/s24.svg" alt="Line chart of the speed of OneFFT, FFTW, FFmpeg, PFFFT, TwoFFT and KFR over the transform size on a Cortex-X4; the numbers are in the tables of docs/measurements.md." width="760">
 </picture>
 
 <picture>
@@ -109,7 +110,7 @@ microseconds. It makes sizes comparable; higher is better. FFTW 3.3.10 was plann
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/plots/m2-dark.svg">
-  <img src="docs/plots/m2.svg" alt="Line chart of the speed of OneFFT, FFTW, FFmpeg and PFFFT and vDSP over the transform size on an Apple M2; the numbers are in the tables of docs/measurements.md." width="760">
+  <img src="docs/plots/m2.svg" alt="Line chart of the speed of OneFFT, FFTW, FFmpeg, PFFFT, vDSP, TwoFFT and KFR over the transform size on an Apple M2; the numbers are in the tables of docs/measurements.md." width="760">
 </picture>
 
 [docs/measurements.md](docs/measurements.md) has the charts and the numbers for these and for
