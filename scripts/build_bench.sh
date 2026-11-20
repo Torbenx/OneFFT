@@ -5,7 +5,8 @@
 #
 # Output: build/<target>/bench. Run scripts/third_party.sh <target> first to get the libraries.
 # EXTRA_CFLAGS is added to the compiler flags, e.g. -DONEFFT_NO_AVX2 to measure the SSE2 kernels.
-# TwoFFT is compiled from its source tree if there is one at TWOFFT_DIR (default ../TwoFFT).
+# TwoFFT (headers only) is compiled from its source tree if there is one at TWOFFT_DIR
+# (default ../TwoFFT), on AArch64 only: its x86-64 backend is not finished.
 set -euo pipefail
 target=${1:?usage: build_bench.sh android-arm64|host}
 root=$(cd "$(dirname "$0")/.." && pwd)
@@ -35,8 +36,8 @@ if [ -f "$tp/lib/libkfr_capi.so" ] || [ -f "$tp/lib/libkfr_capi.dylib" ]; then
     [ "$target" = android-arm64 ] && cp "$tp/lib/libkfr_capi.so" "$out/"
 fi
 twofft=${TWOFFT_DIR:-$root/../TwoFFT}
-if [ -f "$twofft/src/twofft.c" ]; then
-    flags+=(-DBENCH_TWOFFT -I"$twofft/include"); srcs+=("$root/bench/impl_twofft.c" "$twofft/src/twofft.c")
+if [ -f "$twofft/src/tw_arm64.h" ] && "$CC" -dumpmachine | grep -qE '^(aarch64|arm64)'; then
+    flags+=(-DBENCH_TWOFFT -I"$twofft/src"); srcs+=("$root/bench/impl_twofft.c")
 fi
 if [ "$(uname -s)" = Darwin ]; then
     flags+=(-DBENCH_VDSP); srcs+=("$root/bench/impl_vdsp.c")

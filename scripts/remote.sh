@@ -20,8 +20,8 @@ host=${host:-$machine}
 rsync -a --delete --exclude .git --exclude .tools --exclude '/build' --exclude '/build-*' --exclude '/bazel-*' --exclude '/scripts/machines.local' "$root/" "$host:onefft/"
 # TwoFFT's sources, for the benchmark (build_bench.sh looks in ../TwoFFT)
 twofft=${TWOFFT_DIR:-$root/../TwoFFT}
-if [ -f "$twofft/src/twofft.c" ]; then
-    rsync -a --delete "$twofft/include" "$twofft/src" "$host:TwoFFT/"
+if [ -f "$twofft/src/tw_arm64.h" ]; then
+    rsync -a --delete "$twofft/src" "$host:TwoFFT/"
 fi
 tools='ONEFFT_TOOLS=$HOME/onefft-tools-src'
 case $what in
