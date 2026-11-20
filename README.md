@@ -91,7 +91,8 @@ out-of-place interface on interleaved data. The unit is the one FFT benchmarks c
 "mflops": 5 n log2(n), the operation count of a textbook transform, divided by the time in
 microseconds. It makes sizes comparable; higher is better. FFTW 3.3.10 was planned with
 `FFTW_PATIENT` up to 4096 points and `FFTW_MEASURE` above; FFmpeg is `av_tx` of version 7.1.
-KFR 6.3.1 and TwoFFT are in the charts of the phones and the M2 only.
+KFR 6.3.1 and TwoFFT are in the charts of the phones and the M2 only; TwoFFT is its current
+version on the phones and an earlier one on the M2 (see docs/measurements.md).
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/plots/s24-dark.svg">
