@@ -158,7 +158,7 @@ dist/           the single file distribution, generated
 tests/          tests of the built library
 bench/          benchmark against other libraries, and tools used for tuning
 scripts/        build, test and benchmark helpers for the host, Android devices and a Mac
-docs/           design and measurements
+docs/           design, measurements and the banner
 ```
 
 After changing a kernel:
